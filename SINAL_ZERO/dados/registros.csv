@@ -1,0 +1,11 @@
+id;cenario;condicao;titulo;texto
+0;0;NENHUM;Mensagem no terminal do dormitório;SE VOCÊ ESTÁ LENDO ISSO, NÃO ATIVE O SONAR.|O cartão está no armário. A gaveta B guarda o que a sala de máquinas precisa.|-- Assinado: [NOME]
+1;1;NENHUM;Aviso da câmara de escape;PROTOCOLO DE QUARENTENA ATIVO.|A câmara de escape só será liberada com energia restabelecida|e após a identificação da origem do sinal. Use um cartão autorizado no leitor.
+2;2;NENHUM;Diário da Dra. Ilse Varga;Dia 41. O sinal se repete a cada sete minutos.|Ele não vem de fora da estação. Vem de dentro.|Pior: a voz pertence a alguém que ainda não chegou à NEREIDA-7.
+3;2;NENHUM;Experimento RESSONÂNCIA;O sonar foi ampliado para escutar o fundo do oceano.|Ao atingir potência máxima, ele começou a captar respostas antes das perguntas.|A equipe decidiu evacuar. Ninguém chegou à câmara de escape.
+4;3;NENHUM;Prancheta de manutenção;O fusível principal queimou com a sobrecarga do sonar.|Existe um fusível reserva no laboratório (gaveta RESERVA - B).|Sem ele não há energia para a central de sonar.
+5;4;ENERGIA;Painel do sonar;SINAL DETECTADO. ORIGEM: INDETERMINADA.|Insira um MÓDULO DE MEMÓRIA para decodificar as transmissões.
+6;4;MODULO;Transmissão 01;Escute com atenção: as luzes vão falhar às 03h17. Não confie no relógio.
+7;4;MODULO;Transmissão 02;Cada porta que você abrir já foi aberta por mim.
+8;4;MODULO;Transmissão 03;O sinal não vem do oceano. Ele apenas volta para quem o enviou.
+9;5;NENHUM;Gravador da cápsula;GRAVAÇÃO PENDENTE. Destino da transmissão: NEREIDA-7, sete minutos no passado.

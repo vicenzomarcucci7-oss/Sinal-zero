@@ -1,0 +1,4 @@
+id;chave;nome;cenario_inicial;cenario_uso;descricao
+0;cartao;Cartão de acesso;0;1;Cartão magnético da equipe técnica. O nome impresso foi raspado, mas a foto lembra você.
+1;fusivel;Fusível industrial;2;3;Fusível de alta tensão compatível com o gerador principal. Etiqueta: RESERVA - B.
+2;modulo;Módulo de memória;3;4;Módulo de memória da estação. Contém transmissões gravadas que precisam de um decodificador.
