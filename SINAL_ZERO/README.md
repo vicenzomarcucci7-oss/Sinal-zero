@@ -98,9 +98,28 @@ NORTE  SUL  LESTE  OESTE   (ou N, S, L, O, ou IR <DIRECAO>)
 OLHAR                  EXAMINAR <OBJETO>      PEGAR <ITEM>
 USAR <ITEM>            DESCARTAR <ITEM>       INTERAGIR <OBJETO>
 INVENTARIO             DIARIO                 MAPA
-BUSCAR <DESTINO>       STATUS                 AJUDA
-SALVAR                 CARREGAR               SAIR
+BUSCAR <DESTINO>       STATUS                 RESUMO
+SALVAR                 CARREGAR               AJUDA
+SAIR
 ```
+
+### Tela e resumo
+
+Para a tela não virar uma parede de texto, o jogo limpa o console só quando a cena muda: ao entrar numa sala, no `OLHAR` e ao carregar uma partida. Depois de `EXAMINAR`, `DIARIO`, de um erro ou de um enigma, o texto continua na tela, porque o jogador pode precisar ler aquilo de novo (a ordem das alavancas, por exemplo).
+
+Toda tela de sala termina com um resumo:
+
+```
+------------------------------- RESUMO -------------------------------
+Voce esta em: SALA DE MAQUINAS | Vida: 85/100
+Levando: CILINDRO DE OXIGENIO, AMOSTRA BIOLUMINESCENTE, MODULO DE MEMORIA
+Ja fez: leu o aviso no terminal do dormitorio, abriu a porta do laboratorio, religou o gerador.
+Pistas no diario: 4 de 6 (DIARIO para reler)
+OBJETIVO: Levar o modulo de memoria ate a Central de Sonar e usa-lo no console.
+----------------------------------------------------------------------
+```
+
+O objetivo é calculado pelo progresso e diz o próximo passo sem entregar a resposta dos enigmas. Quando um comando faz a história andar, aparece `>> NOVO OBJETIVO: ...`. O comando `RESUMO` mostra esse bloco a qualquer momento, e o prompt sempre lembra a sala atual: `[SALA DE MAQUINAS] O que deseja fazer?`.
 
 Tanto faz maiúscula ou minúscula, e espaço sobrando é ignorado. Dá para escrever só parte do nome: `PEGAR CHAVE` acha a chave inglesa isolada.
 Artigos e preposições no começo do nome também são ignorados, então `usar o cartao magnetico`, `pegar a chave` e `interagir com o painel` funcionam. Só as palavras do começo saem: `BUSCAR DOCA DE ESCAPE` continua igual.
@@ -162,9 +181,13 @@ Os `.h` têm só declarações. Toda a implementação fica em `jogo.c`.
 | `iniciarJogo(Jogador*)` | Vida 100, Dormitório, inventário vazio |
 | `menuInicial(Jogo*)` | Nova partida (pede o nome) ou carregar |
 | `interpretarComando(char[], Comando*)` | Normaliza a linha e separa verbo de argumento |
-| `executarComando(Jogo*, const Comando*)` | Chama a função certa para cada verbo |
+| `executarComando(Jogo*, const Comando*)` | Chama a função certa para cada verbo e avisa quando o objetivo muda |
 | `moverJogador(Jogador*, Ambiente[], int, int)` | Confere direção, saída, destino, trava e bloqueio, e só então move |
-| `mostrarTela` / `mostrarAmbiente` | Painel (energia, comunicação, local, vida), arte, descrição, saídas e objetos |
+| `mostrarTela` / `mostrarAmbiente` | Cabeçalho curto (energia, comunicação, local, vida), arte, descrição, saídas, objetos e resumo |
+| `limparTela()` | Limpa o console com `system("cls")` no Windows ou `system("clear")` nos outros sistemas (escolhido com `#ifdef _WIN32`) |
+| `objetivoAtual(const Jogo*)` | Devolve o texto do próximo passo, de acordo com o que já foi feito |
+| `mostrarResumo(const Jogo*)` | Onde o personagem está, o que leva, o que já fez, pistas no diário e objetivo |
+| `mostrarPrompt(const Jogo*)` | Mostra `[SALA] O que deseja fazer?` antes de cada comando |
 | `mostrarMapa(const Ambiente[], int, int)` | Mapa em ASCII com onde você está, o que ainda não visitou e as passagens travadas (`X`) |
 | `coletarItem(Jogador*, Item*)` | Checa se o item já está com você, se está na sala e se cabe; depois altera jogador e item |
 | `descartarItem`, `removerDoInventario` | Larga o item na sala e tira o id do vetor, puxando os outros para trás |
@@ -395,6 +418,7 @@ No diário, porque a quantidade de pistas cresce durante a partida. Detalhes na 
 | 8 | Save/Load | Salvar, fechar, abrir de novo e carregar. Também tentei carregar arquivo ausente, vazio, com lixo, vida 500, local 42, item 99, item repetido, `QTD_ITENS` errada, sem `FIM`, trava 9 e estado incoerente | Tudo volta igual (vida 85, local, 4 itens, enigmas, travas, diário). Cada arquivo ruim mostra o motivo e a partida atual não muda |
 | 9 | Fim | 7 respostas erradas no painel; partida completa até a cápsula | Derrota com vida 0 e nenhum comando depois; vitória e programa encerrado |
 | 10 | Comandos em português natural | `usar o cartao magnetico`, `interagir com o terminal`, `pegar a chave`, `ir para o norte`, `ir o`, `4 1 3 2` no prompt | Os quatro primeiros funcionam; `ir o` ainda vai para oeste; o número no prompt explica que é preciso usar `INTERAGIR` antes |
+| 11 | Tela e resumo | Andar entre salas, `OLHAR`, `EXAMINAR MANUAL`, `PEGAR CARTAO`, `RESUMO`, `CARREGAR` | Tela limpa ao trocar de sala, no `OLHAR` e no `CARREGAR`; o texto do manual continua na tela; aparece `>> NOVO OBJETIVO`; o resumo lista local, itens, o que foi feito e o objetivo |
 
 ## 14. Roteiro da apresentação (5 a 8 minutos)
 

@@ -33,6 +33,10 @@ int  diarioContem(const Diario *diario, int idRegistro);
 void liberarDiario(Diario *diario);
 
 /* ---------- Telas ---------- */
+void limparTela(void);
+const char *objetivoAtual(const Jogo *jogo);
+void mostrarResumo(const Jogo *jogo);
+void mostrarPrompt(const Jogo *jogo);
 void mostrarTitulo(void);
 void mostrarAmbiente(const Ambiente *ambiente);
 void mostrarTela(const Jogo *jogo);

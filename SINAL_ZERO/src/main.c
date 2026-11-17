@@ -25,7 +25,7 @@ int main(void)
         mostrarTela(&jogo);
 
         while (!jogo.estado.jogoFinalizado) {
-            printf("\nO que deseja fazer?\n> ");
+            mostrarPrompt(&jogo);        /* "[SALA] O que deseja fazer?" */
             if (!lerLinha(linha, sizeof(linha))) {
                 printf("\n[Entrada encerrada]\n");
                 break;

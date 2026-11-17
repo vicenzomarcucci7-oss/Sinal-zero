@@ -721,7 +721,102 @@ static void mostrarObjetosDoLocal(const Jogo *jogo)
     printf("\n");
 }
 
-/* Tela completa do local atual: painel de status, arte, texto, saídas e objetos. */
+/* Limpa o console. O C99 não tem um comando padrão para isso, então uso o
+ * comando do sistema: "cls" no Windows e "clear" no Linux/macOS. */
+void limparTela(void)
+{
+    fflush(stdout);   /* manda antes o texto que ainda está no buffer do printf */
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+/* Próximo passo da aventura, calculado pelo progresso. Diz para onde ir e
+ * o que fazer, mas não entrega a resposta dos enigmas. */
+const char *objetivoAtual(const Jogo *jogo)
+{
+    const EstadoJogo *e = &jogo->estado;
+
+    if (!jogo->enigmas[ENIGMA_PORTA].resolvido) {
+        if (possuiItem(&jogo->jogador, ITEM_CARTAO))
+            return "Usar o cartao no leitor da porta norte do Corredor Central.";
+        return "Achar um jeito de abrir a porta do laboratorio (norte do corredor).";
+    }
+    if (!e->energiaRestaurada) {
+        if (!e->painelAberto)
+            return "Abrir a tampa do painel na Sala de Maquinas. Precisa de uma ferramenta isolada.";
+        if (!e->fusivelInstalado)
+            return "Instalar um fusivel no painel do gerador (Sala de Maquinas).";
+        return "Acionar as alavancas na ordem certa (INTERAGIR PAINEL). A ordem esta no manual do Arquivo.";
+    }
+    if (!e->moduloInstalado)
+        return "Levar o modulo de memoria ate a Central de Sonar e usa-lo no console.";
+    if (!jogo->enigmas[ENIGMA_SONAR].resolvido)
+        return "Decifrar a mensagem do sonar (INTERAGIR CONSOLE).";
+    if (!e->origemDescoberta)
+        return "Chegar a Camara de Contencao pela manutencao e iluminar o escuro.";
+    if (!e->sinalDesativado)
+        return "Desligar o nucleo transmissor (INTERAGIR NUCLEO).";
+    return "Fugir: ir para a Doca de Escape e entrar na capsula (INTERAGIR CAPSULA).";
+}
+
+/* Resumo da aventura: onde o personagem está, o que leva, o que já fez,
+ * quantas pistas tem e qual o próximo objetivo. */
+void mostrarResumo(const Jogo *jogo)
+{
+    const Jogador *j;
+    const EstadoJogo *e;
+    const char *feitos[10];
+    int quantidade = 0, i;
+
+    if (jogo == NULL)
+        return;
+    j = &jogo->jogador;
+    e = &jogo->estado;
+
+    /* Monta a lista do que já foi feito, na ordem da história. */
+    if (diarioContem(&jogo->diario, 0))           feitos[quantidade++] = "leu o aviso no terminal do dormitorio";
+    if (jogo->enigmas[ENIGMA_PORTA].resolvido)    feitos[quantidade++] = "abriu a porta do laboratorio";
+    if (diarioContem(&jogo->diario, 1))           feitos[quantidade++] = "leu o diario da Dra. Varga";
+    if (diarioContem(&jogo->diario, 2))           feitos[quantidade++] = "achou o manual do gerador";
+    if (e->energiaRestaurada)                     feitos[quantidade++] = "religou o gerador";
+    if (e->moduloInstalado)                       feitos[quantidade++] = "instalou o modulo no sonar";
+    if (jogo->enigmas[ENIGMA_SONAR].resolvido)    feitos[quantidade++] = "decifrou o sonar e abriu a manutencao";
+    if (e->origemDescoberta)                      feitos[quantidade++] = "descobriu a origem do sinal";
+    if (e->sinalDesativado)                       feitos[quantidade++] = "desligou o nucleo e liberou a doca";
+
+    printf("\n------------------------------- RESUMO -------------------------------\n");
+    printf("Voce esta em: %s | Vida: %d/%d\n",
+           jogo->ambientes[j->localAtual].nome, j->vida, VIDA_MAXIMA);
+
+    printf("Levando: ");
+    if (j->quantidadeItens == 0)
+        printf("nada");
+    for (i = 0; i < j->quantidadeItens; i++)
+        printf("%s%s", i > 0 ? ", " : "", jogo->itens[*(j->inventario + i)].nome);
+    printf("\n");
+
+    printf("Ja fez: ");
+    if (quantidade == 0)
+        printf("nada ainda. Voce acabou de acordar");
+    for (i = 0; i < quantidade; i++)
+        printf("%s%s", i > 0 ? ", " : "", feitos[i]);
+    printf(".\n");
+
+    printf("Pistas no diario: %d de %d (DIARIO para reler)\n", jogo->diario.quantidade, QTD_REGISTROS);
+    printf("OBJETIVO: %s\n", objetivoAtual(jogo));
+    printf("----------------------------------------------------------------------\n");
+}
+
+/* Linha que antecede cada comando, lembrando onde o jogador está. */
+void mostrarPrompt(const Jogo *jogo)
+{
+    printf("\n[%s] O que deseja fazer?\n> ", jogo->ambientes[jogo->jogador.localAtual].nome);
+}
+
+/* Tela do local atual: cabeçalho curto, arte, texto, saídas, objetos e resumo. */
 void mostrarTela(const Jogo *jogo)
 {
     const Jogador *j;
@@ -731,25 +826,22 @@ void mostrarTela(const Jogo *jogo)
         return;
     j = &jogo->jogador;
 
-    printf("\n==================================================\n");
-    printf("                    SINAL ZERO\n");
-    printf("               ESTACAO NEREIDA-7\n");
-    printf("==================================================\n");
-    printf("SISTEMA DE ENERGIA: %-9s COMUNICACAO: %s\n",
+    printf("======================================================================\n");
+    printf("SINAL ZERO - NEREIDA-7 | ENERGIA: %s | COMUNICACAO: %s\n",
            jogo->estado.energiaRestaurada ? "ONLINE" : "OFFLINE", textoComunicacao(&jogo->estado));
-    printf("LOCALIZACAO: %s\n", jogo->ambientes[j->localAtual].nome);
-
     barras = j->vida / 10;
-    printf("VIDA: %d/%d [", j->vida, VIDA_MAXIMA);
+    printf("LOCAL: %s | VIDA: %d/%d [", jogo->ambientes[j->localAtual].nome, j->vida, VIDA_MAXIMA);
     for (i = 0; i < 10; i++)
         putchar(i < barras ? '#' : '-');
     printf("]\n");
+    printf("======================================================================\n");
 
     mostrarAmbiente(&jogo->ambientes[j->localAtual]);
     mostrarSituacao(jogo);
     printf("\n");
     mostrarSaidas(jogo);
     mostrarObjetosDoLocal(jogo);
+    mostrarResumo(jogo);
 }
 
 /* Lista os itens do inventário percorrendo o vetor com *(vetor + i). */
@@ -891,6 +983,7 @@ void mostrarAjuda(void)
     printf("  DIARIO                le os registros encontrados\n");
     printf("  MAPA                  mostra o mapa da estacao\n");
     printf("  BUSCAR <DESTINO>      procura um caminho livre (busca recursiva)\n");
+    printf("  RESUMO                onde voce esta, o que ja fez e o proximo objetivo\n");
     printf("  STATUS                vida, desafios e objetivos\n");
     printf("  SALVAR / CARREGAR     arquivo %s\n", ARQ_SAVE);
     printf("  AJUDA                 esta lista\n");
@@ -1004,6 +1097,7 @@ static void comandoMover(Jogo *jogo, int direcao)
     if (moverJogador(&jogo->jogador, jogo->ambientes, QTD_AMBIENTES, direcao) != MOV_OK)
         return;
 
+    limparTela();                                       /* sala nova: tela limpa */
     if (jogo->jogador.localAtual == AMB_MANUTENCAO) {
         aplicarDano(&jogo->jogador, DANO_MANUTENCAO);   /* passagem por endereço */
         mostrarTela(jogo);
@@ -1693,15 +1787,13 @@ static void comandoSair(Jogo *jogo)
     jogo->estado.jogoFinalizado = 1;
 }
 
-/* Executa o comando já separado em verbo + argumento. */
-void executarComando(Jogo *jogo, const Comando *comando)
+/* Chama a função certa para o verbo digitado. */
+static void despacharComando(Jogo *jogo, const Comando *comando)
 {
     const char *verbo;
     const char *argumento;
     int direcao;
 
-    if (jogo == NULL || comando == NULL)
-        return;
     verbo = comando->verbo;
     argumento = comando->argumento;
 
@@ -1715,7 +1807,11 @@ void executarComando(Jogo *jogo, const Comando *comando)
     }
 
     if (direcao >= 0)                               comandoMover(jogo, direcao);
-    else if (strcmp(verbo, "OLHAR") == 0)           mostrarTela(jogo);
+    else if (strcmp(verbo, "OLHAR") == 0) {
+        limparTela();
+        mostrarTela(jogo);
+    }
+    else if (strcmp(verbo, "RESUMO") == 0)          mostrarResumo(jogo);
     else if (strcmp(verbo, "EXAMINAR") == 0)        examinarAlvo(jogo, argumento);
     else if (strcmp(verbo, "PEGAR") == 0)           comandoPegar(jogo, argumento);
     else if (strcmp(verbo, "USAR") == 0)            comandoUsar(jogo, argumento);
@@ -1730,8 +1826,11 @@ void executarComando(Jogo *jogo, const Comando *comando)
     else if (strcmp(verbo, "STATUS") == 0)          mostrarStatus(jogo);
     else if (strcmp(verbo, "SALVAR") == 0)          salvarPartida(jogo);
     else if (strcmp(verbo, "CARREGAR") == 0) {
-        if (carregarPartida(jogo))
+        if (carregarPartida(jogo)) {
+            limparTela();
             mostrarTela(jogo);
+            printf("\n[ Partida carregada de %s ]\n", ARQ_SAVE);
+        }
     }
     else if (strcmp(verbo, "AJUDA") == 0)           mostrarAjuda();
     else if (strcmp(verbo, "SAIR") == 0)            comandoSair(jogo);
@@ -1741,6 +1840,23 @@ void executarComando(Jogo *jogo, const Comando *comando)
     }
     else
         printf("Comando desconhecido: '%s'. Digite AJUDA para ver os comandos.\n", verbo);
+}
+
+/* Executa o comando e, se ele fez a aventura avançar, avisa o novo objetivo.
+ * (Depois de CARREGAR o objetivo já aparece no resumo da tela.) */
+void executarComando(Jogo *jogo, const Comando *comando)
+{
+    char objetivoAntes[200];
+
+    if (jogo == NULL || comando == NULL)
+        return;
+    copiarTexto(objetivoAntes, objetivoAtual(jogo), sizeof(objetivoAntes));
+
+    despacharComando(jogo, comando);
+
+    if (!jogo->estado.jogoFinalizado && strcmp(comando->verbo, "CARREGAR") != 0 &&
+        strcmp(objetivoAntes, objetivoAtual(jogo)) != 0)
+        printf("\n>> NOVO OBJETIVO: %s\n", objetivoAtual(jogo));
 }
 
 /* =====================================================================
