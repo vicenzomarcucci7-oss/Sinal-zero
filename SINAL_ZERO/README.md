@@ -123,6 +123,23 @@ O objetivo é calculado pelo progresso e diz o próximo passo sem entregar a res
 
 Tanto faz maiúscula ou minúscula, e espaço sobrando é ignorado. Dá para escrever só parte do nome: `PEGAR CHAVE` acha a chave inglesa isolada.
 Artigos e preposições no começo do nome também são ignorados, então `usar o cartao magnetico`, `pegar a chave` e `interagir com o painel` funcionam. Só as palavras do começo saem: `BUSCAR DOCA DE ESCAPE` continua igual.
+
+Os comandos também aceitam variações do jeito que se fala. Uma tabela de sinônimos (`SINONIMOS[]` em `jogo.c`) traduz a palavra digitada para o comando oficial antes de executar:
+
+| Você pode digitar | Vira |
+|---|---|
+| `encerrar`, `encerra`, `fechar`, `fim`, `sai` | `SAIR` |
+| `pega`, `pegue`, `coletar` | `PEGAR` |
+| `usa`, `use`, `utilizar` | `USAR` |
+| `olha`, `ver` | `OLHAR` (com um objeto depois, vira `EXAMINAR`: `olha o painel`) |
+| `examina`, `ler`, `leia` | `EXAMINAR` |
+| `vai`, `anda`, `seguir` | `IR` (`vai pro norte`) |
+| `larga`, `solta` | `DESCARTAR` |
+| `mexer`, `acionar`, `apertar` | `INTERAGIR` |
+| `inv`, `itens`, `mochila` | `INVENTARIO` |
+| `objetivo`, `onde` | `RESUMO` |
+
+Para aceitar uma palavra nova, basta acrescentar uma linha na tabela. Se mesmo assim o comando não existir, o jogo mostra a lista dos comandos principais.
 Digite sem acento. O jogo também mostra tudo sem acento, porque o terminal do Windows costuma bagunçar os caracteres acentuados.
 
 ### Solução completa
@@ -419,6 +436,7 @@ No diário, porque a quantidade de pistas cresce durante a partida. Detalhes na 
 | 9 | Fim | 7 respostas erradas no painel; partida completa até a cápsula | Derrota com vida 0 e nenhum comando depois; vitória e programa encerrado |
 | 10 | Comandos em português natural | `usar o cartao magnetico`, `interagir com o terminal`, `pegar a chave`, `ir para o norte`, `ir o`, `4 1 3 2` no prompt | Os quatro primeiros funcionam; `ir o` ainda vai para oeste; o número no prompt explica que é preciso usar `INTERAGIR` antes |
 | 11 | Tela e resumo | Andar entre salas, `OLHAR`, `EXAMINAR MANUAL`, `PEGAR CARTAO`, `RESUMO`, `CARREGAR` | Tela limpa ao trocar de sala, no `OLHAR` e no `CARREGAR`; o texto do manual continua na tela; aparece `>> NOVO OBJETIVO`; o resumo lista local, itens, o que foi feito e o objetivo |
+| 12 | Sinônimos | `encerra o jogo`, `pega o cartao`, `olha o terminal`, `vai pro leste`, `usa o cartao`, `ler o diario`, `mochila`, `onde`, `voar` | Todos executam o comando certo; `encerra o jogo` pergunta se quer salvar e sai; `voar` mostra os comandos principais |
 
 ## 14. Roteiro da apresentação (5 a 8 minutos)
 

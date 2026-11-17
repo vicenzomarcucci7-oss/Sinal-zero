@@ -992,6 +992,8 @@ void mostrarAjuda(void)
     printf("quando o jogo pedir. Errou? Digite INTERAGIR de novo para outra tentativa.\n");
     printf("Dica: nomes podem ser parciais (PEGAR CHAVE) e artigos sao ignorados\n");
     printf("(USAR O CARTAO, INTERAGIR COM O PAINEL). Digite sem acentos.\n");
+    printf("Variacoes tambem valem: PEGA, USA, OLHA, VAI PRO NORTE, LER O MANUAL,\n");
+    printf("ENCERRAR, FECHAR...\n");
 }
 
 /* =====================================================================
@@ -1746,8 +1748,55 @@ static void removerPalavrasIniciais(char *argumento)
     }
 }
 
+/* Par "jeito que o jogador escreve" -> "comando oficial". */
+typedef struct {
+    const char *variacao;
+    const char *comando;
+} Sinonimo;
+
+/* Variações comuns em português (imperativo, 3ª pessoa, palavras
+ * parecidas). Para aceitar uma palavra nova, basta acrescentar uma linha. */
+static const Sinonimo SINONIMOS[] = {
+    { "ENCERRAR", "SAIR" }, { "ENCERRA", "SAIR" }, { "FECHAR", "SAIR" },
+    { "FECHA", "SAIR" }, { "FIM", "SAIR" }, { "SAI", "SAIR" },
+    { "QUIT", "SAIR" }, { "EXIT", "SAIR" },
+    { "PEGA", "PEGAR" }, { "PEGUE", "PEGAR" }, { "COLETAR", "PEGAR" },
+    { "COLETA", "PEGAR" }, { "APANHAR", "PEGAR" },
+    { "USA", "USAR" }, { "USE", "USAR" }, { "UTILIZAR", "USAR" }, { "UTILIZA", "USAR" },
+    { "OLHA", "OLHAR" }, { "OLHE", "OLHAR" }, { "VER", "OLHAR" },
+    { "EXAMINA", "EXAMINAR" }, { "EXAMINE", "EXAMINAR" }, { "INSPECIONAR", "EXAMINAR" },
+    { "LER", "EXAMINAR" }, { "LE", "EXAMINAR" }, { "LEIA", "EXAMINAR" },
+    { "VAI", "IR" }, { "VA", "IR" }, { "ANDAR", "IR" }, { "ANDA", "IR" },
+    { "SEGUIR", "IR" }, { "SEGUE", "IR" },
+    { "LARGAR", "DESCARTAR" }, { "LARGA", "DESCARTAR" }, { "SOLTAR", "DESCARTAR" },
+    { "SOLTA", "DESCARTAR" }, { "DESCARTA", "DESCARTAR" },
+    { "MEXER", "INTERAGIR" }, { "MEXE", "INTERAGIR" }, { "ACIONAR", "INTERAGIR" },
+    { "ACIONA", "INTERAGIR" }, { "INTERAGE", "INTERAGIR" }, { "APERTAR", "INTERAGIR" },
+    { "ATIVAR", "INTERAGIR" },
+    { "INV", "INVENTARIO" }, { "ITENS", "INVENTARIO" }, { "MOCHILA", "INVENTARIO" },
+    { "BUSCA", "BUSCAR" }, { "SALVA", "SALVAR" }, { "GRAVAR", "SALVAR" },
+    { "CARREGA", "CARREGAR" }, { "HELP", "AJUDA" }, { "COMANDOS", "AJUDA" },
+    { "OBJETIVO", "RESUMO" }, { "ONDE", "RESUMO" }
+};
+
+/* Troca o verbo digitado pelo comando oficial, se ele for um sinônimo. */
+static void traduzirSinonimo(char *verbo, size_t tamanho)
+{
+    const int quantidade = (int)(sizeof(SINONIMOS) / sizeof(SINONIMOS[0]));
+    int i;
+
+    for (i = 0; i < quantidade; i++) {
+        if (strcmp(verbo, (SINONIMOS + i)->variacao) == 0) {
+            copiarTexto(verbo, (SINONIMOS + i)->comando, tamanho);
+            return;
+        }
+    }
+}
+
 /* Separa a linha digitada em verbo e argumento.
  * "  pegar   a chave inglesa " -> verbo "PEGAR", argumento "CHAVE INGLESA".
+ * O verbo passa pela tabela de sinônimos ("encerra" -> "SAIR"), e
+ * "olhar <algo>" vira "examinar <algo>".
  * Retorna 0 se a linha estiver vazia. */
 int interpretarComando(char comando[], Comando *resultado)
 {
@@ -1770,6 +1819,11 @@ int interpretarComando(char comando[], Comando *resultado)
         removerPalavrasIniciais(resultado->argumento);
     }
     copiarTexto(resultado->verbo, comando, sizeof(resultado->verbo));
+    traduzirSinonimo(resultado->verbo, sizeof(resultado->verbo));
+
+    /* "olhar o painel" / "ver o manual": olhar algo específico é examinar. */
+    if (strcmp(resultado->verbo, "OLHAR") == 0 && resultado->argumento[0] != '\0')
+        copiarTexto(resultado->verbo, "EXAMINAR", sizeof(resultado->verbo));
     return 1;
 }
 
@@ -1838,8 +1892,11 @@ static void despacharComando(Jogo *jogo, const Comando *comando)
         printf("Numeros so valem como resposta de enigma. Primeiro digite INTERAGIR <OBJETO>\n");
         printf("(por exemplo INTERAGIR PAINEL) e responda quando o jogo pedir.\n");
     }
-    else
-        printf("Comando desconhecido: '%s'. Digite AJUDA para ver os comandos.\n", verbo);
+    else {
+        printf("Comando desconhecido: '%s'.\n", verbo);
+        printf("Comandos principais: NORTE, SUL, LESTE, OESTE, OLHAR, EXAMINAR, PEGAR, USAR,\n");
+        printf("INTERAGIR, INVENTARIO, DIARIO, MAPA, RESUMO, SALVAR e SAIR. (AJUDA mostra todos)\n");
+    }
 }
 
 /* Executa o comando e, se ele fez a aventura avançar, avisa o novo objetivo.
