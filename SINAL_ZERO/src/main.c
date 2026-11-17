@@ -1,48 +1,45 @@
 /*
  * main.c
- * SINAL ZERO - Jogo de aventura, mistério e terror psicológico em C (C99).
+ * SINAL ZERO - Aventura textual de mistério em C (C99).
  *
- * Ponto de entrada: inicializa o jogo, mostra o menu inicial e executa o
- * laço principal. Toda a lógica fica em funcoes.c.
+ * A main só inicializa o jogo e controla o ciclo principal:
+ *   ler comando -> interpretar -> executar -> verificar vitória/derrota.
+ * Toda a lógica está em src/jogo.c.
  *
- * Compilar (a partir da pasta SINAL_ZERO):
- *   gcc -std=c99 -Wall -Wextra -I src src/main.c src/funcoes.c -o sinal_zero
+ * Compilar (dentro da pasta SINAL_ZERO):
+ *   gcc -std=c99 -Wall -Wextra -pedantic -I include src/main.c src/jogo.c -o SINAL_ZERO.exe
  */
 #include <stdio.h>
-#include "funcoes.h"
+#include "jogo.h"
 
 int main(void)
 {
-    Jogo jogo;          /* todo o estado do jogo; passado às funções por ponteiro */
-    int opcao;
+    Jogo jogo;                       /* estado completo da partida */
+    char linha[MAX_COMANDO];         /* texto digitado pelo jogador */
+    Comando comando;                 /* verbo + argumento */
 
-    configurarTerminal();
-    mostrarAbertura();
-
-    /* Lê os CSV e aloca a memória. Se falhar, libera o que já foi alocado. */
-    if (!inicializarJogo(&jogo)) {
-        printf("\nNão foi possível iniciar o SINAL ZERO.\n");
-        liberarJogo(&jogo);
-        return 1;
-    }
+    inicializarMundo(&jogo);         /* passagem por endereço: preenche 'jogo' */
+    mostrarTitulo();
 
     if (menuInicial(&jogo)) {
-        mostrarCenario(&jogo);
+        mostrarTela(&jogo);
 
-        /* Laço principal: menu -> ação -> verifica vitória. */
-        while (jogo.ativo) {
-            mostrarMenu(&jogo);
-            opcao = lerOpcao();
-            processarOpcao(&jogo, opcao);
-
-            if (jogo.ativo && verificarVitoria(&jogo)) {
-                mostrarFinal(&jogo);
-                jogo.ativo = 0;
+        while (!jogo.estado.jogoFinalizado) {
+            printf("\nO que deseja fazer?\n> ");
+            if (!lerLinha(linha, sizeof(linha))) {
+                printf("\n[Entrada encerrada]\n");
+                break;
             }
+            if (!interpretarComando(linha, &comando)) {
+                printf("Digite um comando (AJUDA mostra a lista).\n");
+                continue;
+            }
+            executarComando(&jogo, &comando);
+            verificarFimDeJogo(&jogo);   /* após vitória/derrota o laço termina */
         }
     }
 
-    liberarJogo(&jogo);
-    printf("\n[SISTEMA] Memória liberada. Conexão encerrada.\n");
+    liberarJogo(&jogo);              /* free() do diário dinâmico */
+    printf("\n[SISTEMA] Memoria liberada. Fim da transmissao.\n");
     return 0;
 }

@@ -1,0 +1,30 @@
+SINAL ZERO - PASTA DE SALVAMENTO
+================================
+
+O comando SALVAR grava a partida em:
+
+    saves/partida.txt
+
+O arquivo e texto puro no formato CHAVE=VALOR, por exemplo:
+
+    VERSAO=1
+    JOGADOR=Ana
+    VIDA=85
+    LOCAL=4
+    QTD_ITENS=4
+    INVENTARIO=4,5,2,3
+    ENERGIA=1
+    SINAL_DESATIVADO=0
+    ITEM=id;local;coletado;utilizado
+    AMBIENTE=id;visitado;bloqueado;travaN;travaS;travaL;travaO
+    ENIGMA=id;resolvido;tentativas
+    DIARIO=0,1,2,3
+    FIM
+
+Durante a gravacao o jogo cria temporariamente "partida.tmp" e so depois
+substitui "partida.txt". Se algo falhar, o save anterior continua intacto.
+
+O comando CARREGAR valida o arquivo inteiro antes de aplicar. Se ele estiver
+vazio, incompleto ou com valores fora dos limites, a partida atual nao muda.
+
+Nao apague esta pasta: o jogo precisa dela para salvar.
