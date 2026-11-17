@@ -86,6 +86,8 @@ São 6 itens e só 5 espaços, então em algum momento é preciso largar alguma 
 | 3 | Sonar | `USAR MODULO` (a cifra é voltar 3 letras), depois `INTERAGIR CONSOLE`: `HFR` vira `ECO` | −10 de vida | Passagem de Manutenção |
 | 4 | Núcleo (final) | `USAR AMOSTRA` para enxergar, depois `INTERAGIR NUCLEO` com a palavra do sonar e o intervalo do diário: `ECO-7` | −25 de vida | sinal desligado e porta da Doca |
 
+Para responder um enigma, primeiro digite `INTERAGIR` com o objeto (`INTERAGIR PAINEL`, por exemplo). O jogo mostra a pergunta e uma pista de onde está a resposta, e aí você digita. Cada `INTERAGIR` vale uma tentativa: se errar, o jogo avisa para digitar `INTERAGIR` de novo. Números digitados direto em "O que deseja fazer?" não são lidos como resposta, e o jogo explica isso.
+
 Com tudo isso feito, `INTERAGIR CAPSULA` na Doca termina o jogo com vitória.
 Depois de ganhar ou perder, o laço principal acaba e o jogo não aceita mais comando nenhum.
 
@@ -101,6 +103,7 @@ SALVAR                 CARREGAR               SAIR
 ```
 
 Tanto faz maiúscula ou minúscula, e espaço sobrando é ignorado. Dá para escrever só parte do nome: `PEGAR CHAVE` acha a chave inglesa isolada.
+Artigos e preposições no começo do nome também são ignorados, então `usar o cartao magnetico`, `pegar a chave` e `interagir com o painel` funcionam. Só as palavras do começo saem: `BUSCAR DOCA DE ESCAPE` continua igual.
 Digite sem acento. O jogo também mostra tudo sem acento, porque o terminal do Windows costuma bagunçar os caracteres acentuados.
 
 ### Solução completa
@@ -391,6 +394,7 @@ No diário, porque a quantidade de pistas cresce durante a partida. Detalhes na 
 | 7 | Memória | Contador de `malloc`/`realloc`/`free` e uma falha de alocação forçada no `realloc` | Nenhum bloco sobrando no fim; com a falha, o jogo avisa e segue |
 | 8 | Save/Load | Salvar, fechar, abrir de novo e carregar. Também tentei carregar arquivo ausente, vazio, com lixo, vida 500, local 42, item 99, item repetido, `QTD_ITENS` errada, sem `FIM`, trava 9 e estado incoerente | Tudo volta igual (vida 85, local, 4 itens, enigmas, travas, diário). Cada arquivo ruim mostra o motivo e a partida atual não muda |
 | 9 | Fim | 7 respostas erradas no painel; partida completa até a cápsula | Derrota com vida 0 e nenhum comando depois; vitória e programa encerrado |
+| 10 | Comandos em português natural | `usar o cartao magnetico`, `interagir com o terminal`, `pegar a chave`, `ir para o norte`, `ir o`, `4 1 3 2` no prompt | Os quatro primeiros funcionam; `ir o` ainda vai para oeste; o número no prompt explica que é preciso usar `INTERAGIR` antes |
 
 ## 14. Roteiro da apresentação (5 a 8 minutos)
 

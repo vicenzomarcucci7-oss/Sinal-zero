@@ -49,6 +49,9 @@ static const char *MENSAGENS_ERRO_ENIGMA[QTD_ENIGMAS] = {
     "O nucleo libera uma descarga de energia que te arremessa contra a parede!"
 };
 
+/* Objeto que o jogador usa com INTERAGIR para tentar cada enigma de novo. */
+static const char *OBJETOS_ENIGMA[QTD_ENIGMAS] = { "LEITOR", "PAINEL", "CONSOLE", "NUCLEO" };
+
 /* Objetos fixos de cada ambiente (podem ser examinados e/ou usados com
  * INTERAGIR). registroID indica o texto que vai para o diario. */
 static const ObjetoCenario OBJETOS[QTD_OBJETOS] = {
@@ -892,7 +895,10 @@ void mostrarAjuda(void)
     printf("  SALVAR / CARREGAR     arquivo %s\n", ARQ_SAVE);
     printf("  AJUDA                 esta lista\n");
     printf("  SAIR                  encerra o jogo\n");
-    printf("Dica: nomes podem ser parciais (ex.: PEGAR CHAVE). Digite sem acentos.\n");
+    printf("Enigmas: digite INTERAGIR <OBJETO> (painel, console, nucleo) e responda\n");
+    printf("quando o jogo pedir. Errou? Digite INTERAGIR de novo para outra tentativa.\n");
+    printf("Dica: nomes podem ser parciais (PEGAR CHAVE) e artigos sao ignorados\n");
+    printf("(USAR O CARTAO, INTERAGIR COM O PAINEL). Digite sem acentos.\n");
 }
 
 /* =====================================================================
@@ -1314,7 +1320,8 @@ int tentarEnigma(Jogo *jogo, int idEnigma, const char *instrucao)
         return 0;
     normalizarTexto(resposta);
     if (strlen(resposta) == 0) {
-        printf("Voce se afasta do painel.\n");
+        printf("Voce se afasta. Quando quiser responder, digite INTERAGIR %s.\n",
+               OBJETOS_ENIGMA[idEnigma]);
         return 0;
     }
 
@@ -1328,6 +1335,8 @@ int tentarEnigma(Jogo *jogo, int idEnigma, const char *instrucao)
         aplicarDano(&jogo->jogador, enigma->danoErro);
         printf("-%d de vida. Vida atual: %d/%d\n", enigma->danoErro, jogo->jogador.vida, VIDA_MAXIMA);
     }
+    if (jogo->jogador.vida > 0)
+        printf("Para tentar de novo, digite INTERAGIR %s.\n", OBJETOS_ENIGMA[idEnigma]);
     return 0;
 }
 
@@ -1395,7 +1404,10 @@ void interagirObjeto(Jogo *jogo, const char *nome)
             printf("A tampa esta presa por parafusos isolados. Mexer com as maos seria suicidio.\n");
         } else if (!estado->fusivelInstalado) {
             printf("O encaixe do fusivel esta vazio. As alavancas nao respondem.\n");
-        } else if (tentarEnigma(jogo, ENIGMA_ENERGIA, "Digite a ordem das alavancas (ex.: 1 2 3 4).")) {
+        } else if (tentarEnigma(jogo, ENIGMA_ENERGIA,
+                   "Pista: o MANUAL do Arquivo Tecnico diz a ordem pelos NOMES das alavancas.\n"
+                   "  Troque cada nome pelo numero dele no painel e digite os 4 numeros\n"
+                   "  separados por espaco. (DIARIO mostra o manual, se voce ja leu.)")) {
             estado->energiaRestaurada = 1;
             desbloquearPassagem(jogo->ambientes, AMB_LABORATORIO, LESTE);
             printf("O gerador tosse, engasga... e ruge. As luzes da estacao acendem!\n");
@@ -1408,7 +1420,9 @@ void interagirObjeto(Jogo *jogo, const char *nome)
         } else if (!estado->moduloInstalado) {
             printf("A mensagem HFR pisca na tela. Sem a chave de decodificacao, nao faz sentido.\n");
             printf("O console tem uma entrada para MODULO DE MEMORIA.\n");
-        } else if (tentarEnigma(jogo, ENIGMA_SONAR, "Mensagem codificada: HFR")) {
+        } else if (tentarEnigma(jogo, ENIGMA_SONAR,
+                   "Mensagem codificada: HFR\n"
+                   "  Pista: a regra da cifra veio no MODULO DE MEMORIA (DIARIO mostra de novo).")) {
             jogo->ambientes[AMB_MANUTENCAO].bloqueado = 0;
             printf("O sonar emite um pulso grave e se estabiliza. Na tela: ECO.\n");
             printf("Ao longe, as travas da PASSAGEM DE MANUTENCAO se soltam (SUL).\n");
@@ -1419,7 +1433,9 @@ void interagirObjeto(Jogo *jogo, const char *nome)
             printf("O nucleo esta desligado.\n");
         } else if (!estado->origemDescoberta) {
             printf("No escuro voce nao encontra nenhum controle. Algo que brilhe ajudaria.\n");
-        } else if (tentarEnigma(jogo, ENIGMA_NUCLEO, "Exemplo de formato: SOM-3")) {
+        } else if (tentarEnigma(jogo, ENIGMA_NUCLEO,
+                   "Pistas: a palavra saiu do SONAR e o intervalo esta no diario da Dra. Varga.\n"
+                   "  Formato: PALAVRA-NUMERO (exemplo de formato: SOM-3).")) {
             estado->sinalDesativado = 1;
             estado->docaLiberada = 1;
             desbloquearPassagem(jogo->ambientes, AMB_CONTENCAO, SUL);
@@ -1435,7 +1451,8 @@ void interagirObjeto(Jogo *jogo, const char *nome)
         else
             printf("ACESSO NEGADO. O leitor espera um cartao (USAR CARTAO).\n");
     } else {
-        printf("Voce mexe em %s, mas nada muda. Talvez seja melhor examinar.\n", objeto->nome);
+        /* Terminal, diario, manual etc. não têm mecanismo: interagir = examinar. */
+        examinarAlvo(jogo, objeto->nome);
     }
 }
 
@@ -1601,8 +1618,42 @@ int direcaoPorNome(const char *texto)
     return -1;
 }
 
+/* Tira artigos e preposições do começo do nome digitado, porque é natural
+ * escrever "usar o cartao" ou "interagir com o painel":
+ *   "O CARTAO MAGNETICO" -> "CARTAO MAGNETICO"
+ *   "COM O PAINEL"       -> "PAINEL"
+ * A última palavra nunca sai, senão "IR O" (oeste) ficaria vazio.
+ * Palavras no meio do nome ficam: "DOCA DE ESCAPE" continua igual. */
+static void removerPalavrasIniciais(char *argumento)
+{
+    static const char *IGNORADAS[] = {
+        "O", "A", "OS", "AS", "UM", "UMA", "COM", "NO", "NA", "NOS", "NAS",
+        "EM", "DE", "DO", "DA", "AO", "PARA", "PRA", "PRO"
+    };
+    const int quantidade = (int)(sizeof(IGNORADAS) / sizeof(IGNORADAS[0]));
+    int removeu = 1;
+
+    while (removeu) {
+        char *espaco = strchr(argumento, ' ');
+        int i;
+
+        removeu = 0;
+        if (espaco == NULL)
+            return;                       /* sobrou uma palavra só */
+        for (i = 0; i < quantidade; i++) {
+            size_t tamanho = strlen(IGNORADAS[i]);
+            if ((size_t)(espaco - argumento) == tamanho &&
+                strncmp(argumento, IGNORADAS[i], tamanho) == 0) {
+                memmove(argumento, espaco + 1, strlen(espaco + 1) + 1);
+                removeu = 1;
+                break;
+            }
+        }
+    }
+}
+
 /* Separa a linha digitada em verbo e argumento.
- * "  pegar   chave inglesa " -> verbo "PEGAR", argumento "CHAVE INGLESA".
+ * "  pegar   a chave inglesa " -> verbo "PEGAR", argumento "CHAVE INGLESA".
  * Retorna 0 se a linha estiver vazia. */
 int interpretarComando(char comando[], Comando *resultado)
 {
@@ -1622,6 +1673,7 @@ int interpretarComando(char comando[], Comando *resultado)
     if (espaco != NULL) {
         *espaco = '\0';                                   /* separa as duas partes */
         copiarTexto(resultado->argumento, espaco + 1, sizeof(resultado->argumento));
+        removerPalavrasIniciais(resultado->argumento);
     }
     copiarTexto(resultado->verbo, comando, sizeof(resultado->verbo));
     return 1;
@@ -1683,6 +1735,10 @@ void executarComando(Jogo *jogo, const Comando *comando)
     }
     else if (strcmp(verbo, "AJUDA") == 0)           mostrarAjuda();
     else if (strcmp(verbo, "SAIR") == 0)            comandoSair(jogo);
+    else if (isdigit((unsigned char)verbo[0])) {
+        printf("Numeros so valem como resposta de enigma. Primeiro digite INTERAGIR <OBJETO>\n");
+        printf("(por exemplo INTERAGIR PAINEL) e responda quando o jogo pedir.\n");
+    }
     else
         printf("Comando desconhecido: '%s'. Digite AJUDA para ver os comandos.\n", verbo);
 }
