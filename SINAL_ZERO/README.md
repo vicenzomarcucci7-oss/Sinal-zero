@@ -1,269 +1,406 @@
 # SINAL ZERO
 
-Jogo de aventura, mistério e terror psicológico em **C (C99)**, jogado inteiramente pelo terminal.
-Projeto acadêmico da disciplina de programação.
+Jogo de aventura em texto, com mistério e um pouco de terror psicológico, escrito em C99 e compilado com GCC.
+Roda no console e só usa a biblioteca padrão do C.
 
 ---
 
-## 1. Proposta e história
+## 1. O que é o jogo
 
-**NEREIDA-7** é uma estação científica submarina a 2.140 metros de profundidade. A equipe desapareceu.
-Você, um técnico de manutenção, é enviado para investigar. Ao acordar no dormitório, a estação está sem
-energia, as portas estão travadas e um terminal exibe um aviso assinado **com o seu próprio nome**:
+Você anda por uma estação submarina digitando comandos como `NORTE`, `PEGAR CHAVE` e `USAR FUSIVEL`.
+Lê pistas, junta itens, resolve enigmas e destrava portas até entender de onde vem um sinal estranho.
+
+O projeto tem:
+
+- 9 ambientes ligados entre si, cada um com uma arte ASCII;
+- 6 itens, todos com algum efeito no jogo;
+- inventário com espaço para 5 itens;
+- 3 enigmas e 1 desafio final;
+- vida, dano, vitória e derrota;
+- save e load em arquivo `.txt`;
+- uma busca recursiva de caminhos (DFS com backtracking), usada pelo comando `BUSCAR`;
+- um diário de pistas guardado em memória dinâmica.
+
+## 2. História
+
+A NEREIDA-7 é uma estação científica a 2.140 metros de profundidade. Faz 72 horas que ninguém responde de lá.
+Você é o técnico de manutenção mandado para descobrir o que houve com a equipe. Chega e encontra tudo meio alagado, sem energia e com as portas travadas.
+
+No dormitório, um terminal mostra um aviso assinado com o seu nome:
 
 > "SE VOCÊ ESTÁ LENDO ISSO, NÃO ATIVE O SONAR."
 
-Explorando os setores, você descobre que a equipe ampliou o sonar e ele passou a captar
-"respostas antes das perguntas". As transmissões estranhas não vêm do oceano: são um **eco** —
-mensagens gravadas por você mesmo, no futuro, na câmara de escape, e devolvidas sete minutos ao passado.
+As pistas vão aparecendo aos poucos. O diário da Dra. Ilse Varga diz que o sinal se repete a cada 7 minutos e vem de dentro da estação. O sonar pega uma mensagem cifrada, `HFR`. O módulo de memória traz a regra da cifra, e a mensagem vira `ECO`.
+Na Câmara de Contenção, a luz de uma amostra bioluminescente mostra o resto: o sinal é a sua própria voz, gravada no futuro e mandada de volta pelo sonar.
 
-**Objetivo:** restabelecer a energia, ativar o sonar com o módulo de memória, decifrar a origem do sinal
-(enigma) e liberar a câmara de escape. No final, você grava a mesma mensagem que leu no começo,
-fechando o ciclo.
+Para vencer, você precisa descobrir a origem do sinal, desligar a transmissão, liberar a Doca de Escape e fugir na cápsula.
+Você perde se a vida chegar a 0. Isso acontece errando enigmas (choques) ou passando muitas vezes pelo vapor da Passagem de Manutenção.
 
-### Caminho da solução (spoiler)
+## 3. Regras
 
-| Passo | Onde | Ação |
+### Mapa
+
+```
+              [LABO]----------[SONR]
+                |               |
+  [DORM]------[CORR]----[ARQV]  |
+                |               |
+              [MAQS]----------[MANT]------[CONT]
+                                            |
+                                          [DOCA]
+```
+
+| ID | Ambiente | Saídas | Bloqueio |
+|---|---|---|---|
+| 0 | Dormitório | L: Corredor | nenhum |
+| 1 | Corredor Central | N: Laboratório, S: Máquinas, L: Arquivo, O: Dormitório | porta norte precisa do cartão |
+| 2 | Laboratório Abissal | S: Corredor, L: Sonar | porta leste precisa de energia |
+| 3 | Arquivo Técnico | O: Corredor | nenhum |
+| 4 | Sala de Máquinas | N: Corredor, L: Manutenção | nenhum |
+| 5 | Central de Sonar | O: Laboratório, S: Manutenção | nenhum |
+| 6 | Passagem de Manutenção | N: Sonar, O: Máquinas, L: Contenção | travada até calibrar o sonar; tira 10 de vida a cada entrada |
+| 7 | Câmara de Contenção | O: Manutenção, S: Doca | porta sul só abre com o sinal desligado |
+| 8 | Doca de Escape | N: Contenção | nenhum |
+
+Mudei duas conexões da sugestão original: tirei a ligação entre o Arquivo e o Sonar e coloquei o Sonar ao norte da Manutenção. Do jeito sugerido, o desenho do mapa não fechava (o Sonar ficaria a leste do Laboratório e ao sul do Arquivo ao mesmo tempo).
+
+### Itens
+
+| Item | Onde está | Para que serve |
 |---|---|---|
-| 1 | Dormitório | Ler o terminal [4] e coletar o **Cartão de acesso** [2] |
-| 2 | Corredor | Usar o cartão [6] → libera o Laboratório |
-| 3 | Laboratório | Ler registros [4] e coletar o **Fusível industrial** [2] |
-| 4 | Sala de máquinas | Coletar o **Módulo de memória** [2] e usar o fusível [6] → energia ONLINE |
-| 5 | Central de sonar | (só abre com energia) Usar o módulo [6], acessar o terminal [4] |
-| 6 | Central de sonar | Enigma: as iniciais das transmissões (**E**scute, **C**ada, **O** sinal) → `ECO` |
-| 7 | Corredor | Usar o cartão novamente [6] → quarentena encerrada |
-| 8 | Câmara de escape | Entrar → **vitória** |
+| Cartão magnético | Dormitório | Usado no Corredor, abre a porta do Laboratório (enigma 1) |
+| Cilindro de oxigênio | Dormitório | Recupera 40 de vida, sem passar de 100. Some depois de usado |
+| Fusível industrial | Laboratório | Instalado no painel da Sala de Máquinas, com a tampa aberta |
+| Amostra bioluminescente | Laboratório | Usada na Contenção, ilumina o núcleo e mostra a origem do sinal |
+| Módulo de memória | Arquivo Técnico | Encaixado no Sonar, traz a chave da cifra |
+| Chave inglesa isolada | Sala de Máquinas | Abre a tampa do painel |
 
----
+São 6 itens e só 5 espaços, então em algum momento é preciso largar alguma coisa com `DESCARTAR`. O cartão, por exemplo, não serve para mais nada depois que o laboratório abre.
 
-## 2. Árvore de diretórios
+### Desafios
+
+| # | Desafio | Como resolver | Se errar | O que libera |
+|---|---|---|---|---|
+| 1 | Porta do laboratório | `USAR CARTAO` no Corredor | nada | Corredor ↔ Laboratório |
+| 2 | Energia | `USAR CHAVE`, `USAR FUSIVEL`, depois `INTERAGIR PAINEL`. O painel tem `1-TURBINA 2-REDE 3-REFRIGERACAO 4-BOMBA` e o manual do Arquivo diz a ordem: refrigeração, bomba, turbina, rede. Resposta: `3 4 1 2` | −15 de vida | energia ligada e porta Laboratório ↔ Sonar |
+| 3 | Sonar | `USAR MODULO` (a cifra é voltar 3 letras), depois `INTERAGIR CONSOLE`: `HFR` vira `ECO` | −10 de vida | Passagem de Manutenção |
+| 4 | Núcleo (final) | `USAR AMOSTRA` para enxergar, depois `INTERAGIR NUCLEO` com a palavra do sonar e o intervalo do diário: `ECO-7` | −25 de vida | sinal desligado e porta da Doca |
+
+Com tudo isso feito, `INTERAGIR CAPSULA` na Doca termina o jogo com vitória.
+Depois de ganhar ou perder, o laço principal acaba e o jogo não aceita mais comando nenhum.
+
+### Comandos
+
+```
+NORTE  SUL  LESTE  OESTE   (ou N, S, L, O, ou IR <DIRECAO>)
+OLHAR                  EXAMINAR <OBJETO>      PEGAR <ITEM>
+USAR <ITEM>            DESCARTAR <ITEM>       INTERAGIR <OBJETO>
+INVENTARIO             DIARIO                 MAPA
+BUSCAR <DESTINO>       STATUS                 AJUDA
+SALVAR                 CARREGAR               SAIR
+```
+
+Tanto faz maiúscula ou minúscula, e espaço sobrando é ignorado. Dá para escrever só parte do nome: `PEGAR CHAVE` acha a chave inglesa isolada.
+Digite sem acento. O jogo também mostra tudo sem acento, porque o terminal do Windows costuma bagunçar os caracteres acentuados.
+
+### Solução completa
+
+Útil para a apresentação:
+
+```
+PEGAR CARTAO, PEGAR OXIGENIO, EXAMINAR TERMINAL, LESTE, USAR CARTAO, NORTE,
+EXAMINAR DIARIO, PEGAR FUSIVEL, PEGAR AMOSTRA, SUL, LESTE, EXAMINAR MANUAL,
+EXAMINAR RELATORIO, PEGAR MODULO, OESTE, SUL, DESCARTAR CARTAO, PEGAR CHAVE,
+USAR CHAVE, USAR FUSIVEL, INTERAGIR PAINEL -> 3 4 1 2, NORTE, NORTE, LESTE,
+EXAMINAR CONSOLE, USAR MODULO, INTERAGIR CONSOLE -> ECO, SUL, LESTE,
+USAR AMOSTRA, INTERAGIR NUCLEO -> ECO-7, SUL, INTERAGIR CAPSULA
+```
+
+## 4. Structs (`include/estruturas.h`)
+
+| Struct | O que guarda |
+|---|---|
+| `Jogador` | `nome[50]`, `vida`, `localAtual`, `inventario[5]` com os ids dos itens e `quantidadeItens` |
+| `Item` | id, nome, descrição, `coletavel`, `coletado`, `utilizado`, `consumivel`, `localAtual` (id do ambiente, −1 se está com o jogador, −2 se já foi gasto) e `ambienteUso` |
+| `Ambiente` | id, nome, descrição, `arteASCII[1000]`, `saidas[4]`, `visitado`, `bloqueado` e `saidasBloqueadas[4]` |
+| `Enigma` | descrição, resposta, `resolvido`, `tentativas`, `ambienteID` e `danoErro` |
+| `EstadoJogo` | `energiaRestaurada`, `sinalDesativado`, `jogoFinalizado` e outros marcadores de progresso |
+| `ObjetoCenario` | coisas fixas da sala (terminal, painel, núcleo...) que dá para examinar |
+| `Registro` | os textos de pista que vão para o diário |
+| `Diario` | vetor dinâmico: `int *ids`, `quantidade` e `capacidade` |
+| `Comando` | a linha digitada separada em `verbo` e `argumento` |
+| `Jogo` | junta tudo isso, para as funções receberem um ponteiro só |
+
+As constantes (`QTD_AMBIENTES 9`, `QTD_ITENS 6`, `QTD_ENIGMAS 4`, `MAX_INVENTARIO 5`, `VIDA_MAXIMA 100` e outras) estão no mesmo arquivo.
+
+## 5. Arquivos
 
 ```
 SINAL_ZERO/
-├── src/
-│   ├── main.c            ponto de entrada e laço principal
-│   ├── estruturas.h      structs, constantes e caminhos
-│   ├── funcoes.h         protótipos
-│   └── funcoes.c         implementação de todas as funções
-├── dados/
-│   ├── cenarios.csv      6 cenários + conexões (matriz) + requisitos
-│   ├── itens.csv         3 objetos
-│   └── registros.csv     10 registros/mensagens
-├── saves/
-│   ├── progresso.txt     progresso salvo (criado/substituído pela opção [8])
-│   └── diario_eventos.txt  (gerado durante o jogo: log com data e hora)
-├── README.md
-└── abrir_projeto.bat     abre a pasta no VS Code
+|-- src/
+|   |-- main.c          inicialização e laço principal (umas 50 linhas)
+|   |-- jogo.c          o resto: mundo, comandos, enigmas, DFS, arquivos, memória
+|-- include/
+|   |-- estruturas.h    structs e constantes
+|   |-- jogo.h          protótipos
+|-- saves/
+|   |-- LEIA-ME.txt     explica o formato do save (o partida.txt é criado pelo jogo)
+|-- README.md
+|-- abrir_projeto.bat
 ```
 
----
+Os `.h` têm só declarações. Toda a implementação fica em `jogo.c`.
 
-## 3. Como compilar e executar
+## 6. Funções principais (`src/jogo.c`)
 
-Requisito: **GCC** (MinGW/MSYS2 no Windows, ou gcc no Linux). Nenhuma biblioteca externa.
+| Função | O que faz |
+|---|---|
+| `inicializarMundo(Jogo*)` | Cria os 9 ambientes, os 6 itens, os 4 enigmas, as travas do começo e o diário vazio |
+| `iniciarJogo(Jogador*)` | Vida 100, Dormitório, inventário vazio |
+| `menuInicial(Jogo*)` | Nova partida (pede o nome) ou carregar |
+| `interpretarComando(char[], Comando*)` | Normaliza a linha e separa verbo de argumento |
+| `executarComando(Jogo*, const Comando*)` | Chama a função certa para cada verbo |
+| `moverJogador(Jogador*, Ambiente[], int, int)` | Confere direção, saída, destino, trava e bloqueio, e só então move |
+| `mostrarTela` / `mostrarAmbiente` | Painel (energia, comunicação, local, vida), arte, descrição, saídas e objetos |
+| `mostrarMapa(const Ambiente[], int, int)` | Mapa em ASCII com onde você está, o que ainda não visitou e as passagens travadas (`X`) |
+| `coletarItem(Jogador*, Item*)` | Checa se o item já está com você, se está na sala e se cabe; depois altera jogador e item |
+| `descartarItem`, `removerDoInventario` | Larga o item na sala e tira o id do vetor, puxando os outros para trás |
+| `usarItem(Jogo*, Item*)` | O efeito de cada item no lugar certo |
+| `examinarObjeto(const Item*)`, `examinarAlvo` | Descrições; alguns objetos põem uma pista no diário |
+| `interagirObjeto` | Painel, console, núcleo, cápsula e leitor |
+| `resolverEnigma(Enigma*, const char*)` | Compara a resposta normalizada; marca `resolvido` ou soma uma tentativa |
+| `tentarEnigma` | Pergunta a resposta e aplica o dano se estiver errada |
+| `aplicarDano` / `restaurarVida` | Mudam a vida pelo ponteiro, sem sair de 0 a 100 |
+| `buscarCaminho` | A DFS recursiva |
+| `comandoBuscar` | Roda a DFS e mostra a rota |
+| `adicionarAoDiario` / `liberarDiario` | `malloc`, `realloc` e `free` |
+| `salvarPartida` / `carregarPartida` | Save em TXT, com validação na hora de carregar |
+| `verificarVitoria` / `verificarDerrota` / `verificarFimDeJogo` | Fim da partida |
 
-**Sempre execute a partir da pasta `SINAL_ZERO`** — os caminhos `dados/...` e `saves/...` são relativos a ela.
+## 7. Ponteiros
+
+A variável `jogo` é criada uma vez só, na `main`. O que circula pelas funções é o endereço dela:
+
+```c
+inicializarMundo(&jogo);           // & pega o endereço
+aplicarDano(&jogo->jogador, 15);   // dentro de uma função que recebeu Jogo *jogo
+```
+
+```c
+void aplicarDano(Jogador *jogador, int dano) {   // * declara o ponteiro
+    if (jogador == NULL || dano <= 0) return;    // proteção contra NULL
+    jogador->vida -= dano;                        // -> mexe no campo da struct original
+    if (jogador->vida < 0) jogador->vida = 0;
+}
+```
+
+Se o parâmetro fosse `Jogador jogador`, sem o `*`, a função receberia uma cópia e a vida do jogador de verdade continuaria igual.
+
+`coletarItem(Jogador *jogador, Item *item)` é outro exemplo: com dois ponteiros ela muda o inventário do jogador e o `localAtual`/`coletado` do item na mesma chamada.
+
+`buscarItem()` devolve um `Item *`, o endereço do item dentro do vetor. Por isso `usarItem(jogo, item)` consegue alterar o item que está no jogo, e não uma cópia.
+
+Funções que só leem recebem `const`: `mostrarAmbiente(const Ambiente *)`, `mostrarInventario(const Jogador *, const Item[])`, `verificarVitoria(const EstadoJogo *)`, `buscarCaminho(const Ambiente[] ...)`. Se eu tentar alterar alguma coisa nelas por engano, o compilador reclama.
+
+Também uso aritmética de ponteiros para andar nos vetores:
+
+```c
+*(jogador->inventario + i)                 // possuiItem, mostrarInventario
+(jogo->itens + i)->localAtual              // mostrarObjetosDoLocal
+atual = ambientes + jogador->localAtual;   // moverJogador
+for (; *origem != '\0'; origem++)          // normalizarResposta
+```
+
+## 8. Busca recursiva de caminhos (DFS)
+
+```c
+int buscarCaminho(const Ambiente ambientes[], int quantidade,
+                  int atual, int destino, int visitados[]);
+```
+
+`visitados[i]` vale 0 quando o ambiente *i* não está no caminho que a busca está testando. Quando vale `k`, ele é o k-ésimo passo desse caminho.
+
+Passo a passo:
+
+1. Confere se os ponteiros não são `NULL` e se `atual` e `destino` existem.
+2. Marca o ambiente atual: `visitados[atual] = profundidade + 1`.
+3. Caso-base: `if (atual == destino) return 1;`.
+4. Para cada uma das 4 saídas, pula o vizinho se:
+   - não existe saída para lá (`SEM_SAIDA`);
+   - a passagem está travada (`passagemLivre` olha a trava da porta e o `bloqueado` do ambiente);
+   - o vizinho já está marcado em `visitados[]`. É isso que impede a busca de rodar em círculo, por exemplo Corredor → Laboratório → Sonar → Manutenção → Máquinas → Corredor.
+
+   Para os outros, mostra `Explorando: <nome>` e chama `buscarCaminho(..., vizinho, destino, visitados)`.
+5. Se alguma chamada devolver 1, esse 1 volta por todas as chamadas até a primeira.
+6. Backtracking: se nenhuma saída chegou ao destino, a função apaga a própria marca (`visitados[atual] = 0`) e devolve 0. Com isso a busca desiste daquele beco e o ambiente pode ser usado por outro caminho depois. Na tela aparece `(sem saida a partir de X, voltando)`.
+
+Quando acha o caminho, só os ambientes da rota ficam marcados, numerados na ordem. `comandoBuscar` usa esses números para imprimir a rota (`LESTE -> NORTE -> LESTE ...`).
+
+Saída real no começo do jogo, com a porta do laboratório ainda trancada:
+
+```
+> BUSCAR DOCA DE ESCAPE
+Iniciando busca de caminho a partir de DORMITORIO...
+  Explorando: CORREDOR CENTRAL
+  Explorando: SALA DE MAQUINAS
+  (sem saida a partir de SALA DE MAQUINAS, voltando)
+  Explorando: ARQUIVO TECNICO
+  (sem saida a partir de ARQUIVO TECNICO, voltando)
+  (sem saida a partir de CORREDOR CENTRAL, voltando)
+NENHUM CAMINHO LIVRE ENCONTRADO.
+```
+
+## 9. Arquivos (save)
+
+O save fica em `saves/partida.txt`, em texto. Não gravo struct em binário.
+
+Para salvar (`salvarPartida`), o jogo abre o arquivo com `fopen("w")` e escreve com `fprintf` e `fputs`:
+
+- nome, vida, local e quantidade de itens;
+- o inventário;
+- os marcadores de estado (energia, sinal etc.);
+- uma linha `ITEM` por item (local, coletado, utilizado);
+- uma linha `AMBIENTE` por ambiente (visitado, bloqueado e as 4 travas);
+- uma linha `ENIGMA` por enigma (resolvido e tentativas);
+- o diário;
+- `FIM` na última linha.
+
+Tudo isso vai primeiro para `partida.tmp`. Depois de conferir `ferror()` e `fclose()`, o jogo troca o arquivo com `remove` e `rename`. Se a gravação falhar no meio, o save antigo não se perde.
+
+Para carregar (`carregarPartida`), `fscanf(arquivo, "VERSAO=%d", ...)` lê a primeira linha. Se ele devolver `EOF`, o arquivo está vazio; se devolver outra coisa que não 1, o arquivo não é um save. Daí em diante, `fgets` lê linha por linha e `strchr`, `strtok`, `sscanf` e `strtol` separam os valores.
+
+Os dados vão para uma variável `Jogo temp`. Ela só substitui a partida atual se tudo isto estiver certo:
+
+- versão certa e linha `FIM` presente;
+- vida entre 1 e 100;
+- local que existe;
+- ids de itens válidos e sem repetição;
+- `QTD_ITENS` igual ao tamanho do inventário;
+- inventário batendo com o local dos itens;
+- travas entre 0 e 3;
+- todos os itens, ambientes e enigmas presentes;
+- jogador fora de ambiente bloqueado;
+- marcadores de estado batendo com os enigmas.
+
+Se alguma coisa estiver errada, o jogo diz qual foi o problema e a partida que estava rodando continua igual.
+
+## 10. Alocação dinâmica
+
+Usei no diário de investigação (`Diario`), que guarda os ids das pistas encontradas. O jogador acha essas pistas aos poucos, numa ordem e numa quantidade que dependem de como ele joga, então o vetor vai crescendo conforme precisa.
+
+```c
+if (diario->ids == NULL)
+    temporario = malloc(2 * sizeof(int));                            // primeira pista
+else
+    temporario = realloc(diario->ids, novaCapacidade * sizeof(int)); // dobra: 2 -> 4 -> 8
+if (temporario == NULL) { /* avisa e fica com o vetor antigo */ return -1; }
+diario->ids = temporario;
+```
+
+O `realloc` vai para um ponteiro temporário. Se ele falhar, `diario->ids` continua apontando para o vetor antigo e nada vaza.
+
+No carregamento, o diário lido do arquivo é alocado dentro da partida temporária. Se o arquivo estiver errado, `liberarDiario(&temp.diario)` devolve essa memória. Se estiver certo, o diário antigo é liberado antes da troca. No fim do programa, `liberarJogo()` chama o `free()`.
+
+Ambientes, itens e enigmas não usam alocação dinâmica, porque a quantidade deles é fixa.
+
+## 11. Como compilar e executar
+
+Precisa do GCC para Windows (MinGW-w64 ou MSYS2) no PATH.
 
 ```bash
-gcc -std=c99 -Wall -Wextra -I src src/main.c src/funcoes.c -o sinal_zero
+gcc -std=c99 -Wall -Wextra -pedantic -I include src/main.c src/jogo.c -o SINAL_ZERO.exe
 ```
 
-Windows (PowerShell ou CMD):
-
-```bash
-sinal_zero.exe
+```powershell
+.\SINAL_ZERO.exe
 ```
 
-Linux / Git Bash:
+Rode de dentro da pasta `SINAL_ZERO`, porque o save usa o caminho relativo `saves/partida.txt`.
 
-```bash
-./sinal_zero
-```
+### No Visual Studio Code
 
-### Pelo Visual Studio Code
-
-1. Dê dois cliques em `abrir_projeto.bat` (ou, num terminal dentro da pasta, digite `code .`).
-2. No VS Code, abra o terminal integrado: menu **Terminal → Novo Terminal** (atalho `` Ctrl+` ``).
-   Ele já abre na pasta `SINAL_ZERO`.
-3. Cole o comando de compilação acima e depois `.\sinal_zero.exe`.
-
-> Acentos: no Windows o programa chama `SetConsoleOutputCP(CP_UTF8)` para exibir os acentos corretamente.
-> Ao digitar respostas, prefira letras sem acento (ex.: `eco`, `sinal`).
+1. Dê dois cliques em `abrir_projeto.bat`. Ele entra na pasta e roda `code .` (o comando `code` precisa estar no PATH). Também dá para clicar com o botão direito na pasta e escolher *Abrir com Code*.
+2. Abra o terminal em **Terminal → Novo Terminal** ou com `` Ctrl+` ``. Ele já abre na pasta `SINAL_ZERO`.
+3. Cole o comando do `gcc` e aperte Enter. Se não aparecer nada, compilou sem aviso.
+4. Rode com `.\SINAL_ZERO.exe`.
 
 ---
 
-## 4. Funções (explicação individual)
+## 12. Para explicar na apresentação
 
-### Utilitários (strings e entrada)
-| Função | O que faz |
-|---|---|
-| `configurarTerminal()` | No Windows, coloca o terminal em UTF-8 para exibir acentos. |
-| `lerLinha()` | Lê uma linha com `fgets` (seguro), descarta excesso e remove `\n`. Retorna 0 em fim de entrada. |
-| `lerOpcao()` | Lê um número de menu com `strtol`; letras, vazio ou negativos viram `OPCAO_INVALIDA`. |
-| `removerQuebraLinha()` | Usa `strcspn` para cortar `\r\n` (arquivos do Windows). |
-| `aparar()` | Remove espaços do início e do fim (`isspace`, `memmove`). |
-| `paraMaiusculas()` | Converte o texto percorrendo-o com aritmética de ponteiros (`texto++`). |
-| `copiarTexto()` | Usa `strlen` para checar se cabe; copia com `strcpy` ou trunca com `strncpy`. |
-| `substituirMarcador()` | Usa `strstr` para achar `[NOME]` no registro e troca pelo nome do jogador (`strcat`). |
-| `dividirCampos()` | Divide uma linha CSV no `;` com `strchr`, guardando ponteiros para cada campo. |
-| `imprimirTexto()` | Imprime textos do CSV convertendo `|` em quebra de linha. |
-| `registrarEvento()` | Acrescenta uma linha com data/hora em `saves/diario_eventos.txt` (modo `"a"`, `stdarg.h`, `strftime`). |
+### Como a struct `Jogador` guarda os dados
 
-### Inicialização e memória
-| Função | O que faz |
-|---|---|
-| `inicializarJogo()` | Zera a matriz, inicia o jogador e chama as três funções de carga. |
-| `iniciarJogador()` | Recebe `Jogador*` e zera inventário, registros e objetivos. |
-| `carregarCenarios()` | Lê `cenarios.csv` para o vetor estático e monta a **matriz de adjacência** a partir da coluna `conexoes` (`strtok`). |
-| `carregarItens()` | Lê `itens.csv` para um vetor **dinâmico** (`malloc` inicial, `realloc` dobrando a capacidade). |
-| `carregarRegistros()` | Igual ao anterior, para `registros.csv`. |
-| `reiniciarItens()` | Devolve os itens aos cenários originais (nova aventura). |
-| `liberarJogo()` | `free` dos dois vetores dinâmicos; seguro mesmo se a carga falhou. |
+Ela junta o que é do protagonista: `nome`, `vida`, `localAtual` (o id da sala onde ele está) e `inventario[5]`.
+O inventário guarda só os ids dos itens, e `quantidadeItens` diz quantas posições estão ocupadas. Por exemplo, `{4, 5, 2}` com quantidade 3 quer dizer oxigênio, amostra e módulo.
 
-### Buscas
-| Função | O que faz |
-|---|---|
-| `buscarItemPorId()` / `buscarRegistroPorId()` | Retornam um **ponteiro** para o elemento no vetor (permite alterar o item original). |
-| `temItem()` / `registroJaEncontrado()` | Percorrem os vetores do jogador com `*(vetor + i)`. |
-| `registroContem()` | Compara título e texto com o termo, sem diferenciar maiúsculas (`strstr`). |
-| `buscarRegistroRecursivo()` | **Busca recursiva** de um termo nos registros encontrados (ver seção 5-K). |
+### Como as salas se ligam
 
-### Inventário
-| Função | O que faz |
-|---|---|
-| `adicionarAoInventario()` | Insere o id no vetor `inventario` se houver espaço. |
-| `removerDoInventario()` | Remove deslocando os elementos seguintes para a esquerda. |
-| `adicionarRegistroEncontrado()` | Guarda o id do registro lido (sem duplicar). |
+Cada `Ambiente` tem `saidas[4]` (N, S, L, O) com o id da sala vizinha, ou −1 se não tem saída. O Corredor tem `saidas = {2, 4, 3, 0}`.
+As travas ficam em `saidasBloqueadas[4]` (0 livre, 1 cartão, 2 energia, 3 sinal). Quando a sala inteira está fechada, quem marca isso é o campo `bloqueado`.
 
-### Interface e ações
-| Função | O que faz |
-|---|---|
-| `mostrarAbertura()` | Tela de título. |
-| `menuInicial()` | Nova aventura (pede o nome) ou carregar progresso. |
-| `mostrarStatus()` | Barra `[ SISTEMA DE ENERGIA: OFFLINE ] [ SONAR ] [ ESCAPE ]` + localização. |
-| `mostrarCenario()` | Status + descrição (muda quando a energia volta). |
-| `mostrarMenu()` / `processarOpcao()` | Exibe o menu e chama a função da opção (`switch`). |
-| `examinarAmbiente()` | Descrição, saídas lidas da **matriz** (com indicação de bloqueio) e dicas. |
-| `procurarObjetos()` / `coletarItem()` | Lista os itens do cenário e move o escolhido para o inventário. |
-| `mostrarInventario()` | Lista os itens carregados com descrição. |
-| `escolherItemParaUsar()` / `usarItem()` | Item só funciona no cenário da coluna `cenario_uso`; o efeito é decidido por `strcmp` na chave. |
-| `acessarTerminal()` | Mostra os registros do cenário cuja condição foi atendida e os guarda; no sonar abre o enigma. |
-| `exibirRegistro()` | Mostra um registro trocando `[NOME]` pelo nome do jogador. |
-| `condicaoAtendida()` | Interpreta `NENHUM`, `ENERGIA`, `MODULO`. |
-| `resolverEnigma()` | Lê a resposta, converte para maiúsculas e compara com `ECO`. |
-| `podeAcessar()` / `explicarBloqueio()` | Verificam o requisito do cenário (`NENHUM`, `CARTAO`, `ENERGIA`, `QUARENTENA`). |
-| `moverJogador()` / `moverPara()` | Listam só destinos com `1` na matriz e efetuam o movimento conferindo matriz + requisito. |
-| `menuRegistros()` / `pesquisarRegistros()` | Ler registros encontrados ou pesquisar uma palavra (usa a busca recursiva). |
-| `salvarProgresso()` / `carregarProgresso()` | Gravação e leitura do progresso (ver seção 5-G/H). |
-| `verificarVitoria()` / `mostrarFinal()` | Checa os objetivos na câmara de escape e mostra o final. |
+### Como o movimento funciona
 
----
+`NORTE` vira a direção 0 e `moverJogador` lê `ambientes[local].saidas[0]`. Não tem um `if` para cada sala; é o vetor que diz para onde ir.
+Antes de mover, a função confere, nesta ordem:
 
-## 5. Como cada conteúdo da disciplina foi aplicado
+1. se a direção é válida;
+2. se existe saída;
+3. se o destino existe;
+4. se a porta está trancada;
+5. se a sala de destino está bloqueada.
 
-**A) Structs** — `estruturas.h`: `Item`, `Cenario`, `Registro`, `Jogador` e `Jogo` (que agrupa todo o estado).
+Só então muda `jogador->localAtual`.
 
-**B) Vetores** — `Cenario cenarios[6]`; `int inventario[10]` e `int registros[32]` no `Jogador`;
-vetores dinâmicos `Item *itens` e `Registro *registros`; vetores locais de opções em `moverJogador()` e `procurarObjetos()`.
+### Ponteiros e passagem por endereço
 
-**C) Matriz** — `int conexoes[6][6]` em `Jogo`. É preenchida a partir da coluna `conexoes` de `cenarios.csv`
-(`1|2|3` → `conexoes[id][1] = 1` ...). `moverJogador()` só lista os destinos com `1`, e `moverPara()` confere a matriz de novo.
+Está na seção 7. Resumindo: `aplicarDano(&jogador, 20)` manda o endereço do jogador, e lá dentro `jogador->vida -= 20` mexe na variável original, não numa cópia.
 
-```
-            DOR COR LAB MAQ SON ESC
-Dormitório   0   1   0   0   0   0
-Corredor     1   0   1   1   1   1
-Laboratório  0   1   0   1   0   0
-Máquinas     0   1   1   0   0   0
-Sonar        0   1   0   0   0   0
-Escape       0   1   0   0   0   0
-```
+### DFS, caso-base e backtracking
 
-**D) Strings (`string.h`)** — `strcmp` (requisitos, chaves dos itens, enigma, chaves do save), `strcpy` e `strlen`
-(`copiarTexto`), `strstr` (pesquisa de registros e `substituirMarcador`), `strcat`, `strncpy`, `strchr`, `strcspn`, `strtok`, `memmove`.
+Está na seção 8.
+- O caso-base é `if (atual == destino) return 1;`.
+- Enquanto uma sala está no caminho, ela fica marcada em `visitados[]`, e é por isso que a busca não anda em círculo.
+- Se todas as saídas falham, a marca é apagada (`visitados[atual] = 0`) e a busca volta para a sala anterior para tentar a próxima saída.
 
-**E) Ponteiros e referências** — todas as funções recebem `Jogo *` ou `Jogador *`; por exemplo `usarItem()` altera
-`j->energiaRestaurada` e `item->localizacao` diretamente, sem retornar structs. `buscarItemPorId()` retorna
-`Item *` para que o chamador altere o item real dentro do vetor.
+### Como o TXT guarda a partida
 
-**F) Ponteiros como vetores** — `*(jogador->inventario + i)` em `temItem()`, `(jogo->itens + i)->localizacao` em
-`reiniciarItens()`, `cenario = jogo->cenarios + id` em `carregarCenarios()`, `*(locais + i)` em `carregarProgresso()`,
-e `for (; *texto; texto++)` em `paraMaiusculas()`.
+Cada informação vira uma linha `CHAVE=VALOR`. Na hora de carregar, as linhas vão para uma partida temporária. Só depois de conferir tudo o jogo copia essa partida para a atual (`*jogo = temp`).
 
-**G) Arquivos** — leitura dos 3 CSV (`"r"`), gravação do progresso em `saves/progresso.txt` (cenário atual, inventário,
-registros, objetivos, localização de cada item) e log de eventos em `saves/diario_eventos.txt` (`"a"`).
-Todo `fopen` é verificado; arquivos ausentes geram mensagem e o jogo encerra ou continua sem travar.
+### Como os enigmas abrem caminho
 
-**H) Manipulação avançada (somente o que o projeto precisava)**
-- **Salvamento seguro**: grava em `progresso.tmp`, confere `ferror`/`fclose`, e só então usa `remove` + `rename` para
-  substituir o save. Assim uma falha no meio não destrói o progresso anterior. (`remove` antes porque no Windows
-  `rename` falha se o destino existe.)
-- **`fseek`/`ftell`/`rewind`** em `carregarProgresso()` para detectar arquivo de save vazio.
-- **Validação antes de aplicar**: o save é lido para variáveis temporárias e só substitui o jogo se o cabeçalho
-  `SINAL_ZERO_SAVE 1` e o cenário forem válidos.
-- **Parsing estruturado**: formato `chave=valor`, listas com `strtok` e pares `id:local` com `sscanf`.
-- **Log com data/hora**: `time`, `localtime`, `strftime`, e função com argumentos variáveis (`stdarg.h`, `vfprintf`).
+Quando `resolverEnigma` devolve 1, o código muda os dados das salas:
+- `desbloquearPassagem(ambientes, AMB_LABORATORIO, LESTE)` zera a trava dos dois lados da porta;
+- `ambientes[AMB_MANUTENCAO].bloqueado = 0` libera a sala inteira.
 
-**I) CSV** — `cenarios.csv`, `itens.csv`, `registros.csv`, separados por `;` (padrão do Excel em português,
-e permite usar vírgulas dentro dos textos). A primeira linha é cabeçalho; linhas mal formadas são ignoradas com aviso.
-`|` dentro dos textos representa quebra de linha.
+No próximo movimento (ou no próximo `BUSCAR`), a passagem já aparece livre.
 
-**J) Alocação de memória** — itens e registros são lidos sem saber a quantidade: começa com `malloc` para 2 elementos
-e usa `realloc` dobrando a capacidade (2→4→8→16). Se `realloc` falhar, o ponteiro antigo continua válido e é liberado
-em `liberarJogo()`. Em `carregarProgresso()` um `malloc` temporário do tamanho exato do vetor de itens é liberado
-logo depois. Cenários **não** usam alocação dinâmica, pois são sempre 6 (tamanho da matriz).
-Verificado com um contador de alocações: ao final de cada execução, `blocos vivos = 0`.
+### Onde e por que usei alocação dinâmica
 
-**K) Recursividade** — `buscarRegistroRecursivo(jogo, posicao, termo)`:
-- **Parada 1**: `posicao >= qtdRegistros` → retorna `-1` (não encontrou).
-- **Parada 2**: o registro da posição contém o termo → retorna `posicao`.
-- **Chamada recursiva**: `return buscarRegistroRecursivo(jogo, posicao + 1, termo);`
+No diário, porque a quantidade de pistas cresce durante a partida. Detalhes na seção 10.
 
-`pesquisarRegistros()` chama a função a partir de `0` e, a cada resultado `p`, chama de novo a partir de `p + 1`,
-listando todos os registros que contêm a palavra (menu [7] → [2]).
+## 13. Testes que eu rodei
 
----
-
-## 6. Roteiro de testes
-
-| # | Teste | Entrada | Resultado esperado |
+| # | Teste | Como | Resultado |
 |---|---|---|---|
-| 1 | Início | `sinal_zero.exe` | Mensagem "6 cenários, 3 objetos e 10 registros carregados" |
-| 2 | CSV ausente | Executar de outra pasta (ex.: `cd src` e `..\sinal_zero.exe`) | "[ERRO] Arquivo dados/cenarios.csv não encontrado" e saída sem travar |
-| 3 | Matriz | No Dormitório, [5] | Só aparece CORREDOR CENTRAL |
-| 4 | Bloqueio | Corredor → [5] → Laboratório sem usar cartão | "[BLOQUEADO] ... exige um cartão" |
-| 5 | Coleta/inventário | Dormitório [2] [1], depois [3] | Cartão aparece no inventário |
-| 6 | Usar item no lugar errado | Usar cartão no Dormitório | "nada aqui reage" |
-| 7 | Usar item | Corredor [6] cartão | Laboratório liberado |
-| 8 | Energia | Sala de máquinas [6] fusível | `SISTEMA DE ENERGIA: ONLINE`; sonar desbloqueado |
-| 9 | Enigma errado | Sonar [4] → `SOS` | "RESPOSTA INCORRETA" + dica |
-| 10 | Enigma certo | Sonar [4] → `eco` | "PALAVRA ACEITA: ECO" |
-| 11 | Recursão | [7] → [2] → `sinal` | Lista 4 registros que contêm SINAL (após ler todos) |
-| 12 | Salvar | [8] | `saves/progresso.txt` contém `SINAL_ZERO_SAVE 1` e os dados |
-| 13 | Carregar | Reabrir → [2] Carregar | Volta ao mesmo cenário, inventário e objetivos |
-| 14 | Save inválido | Apagar conteúdo de `progresso.txt` e carregar | "arquivo de progresso está vazio" |
-| 15 | Entradas inválidas | `abc`, vazio, `-3`, `42` | "[!] Opção inválida", jogo continua |
-| 16 | Fim de entrada | Ctrl+Z/Ctrl+D no menu | "[Entrada encerrada]", memória liberada |
-| 17 | Vitória | Corredor [6] cartão → [5] Câmara de escape | "FIM DA TRANSMISSÃO - VOCÊ ESCAPOU" |
-| 18 | Log | Abrir `saves/diario_eventos.txt` | Eventos com data e hora |
+| 1 | Início | Nova partida com o nome "Ana" | Vida 100/100, no Dormitório |
+| 2 | Movimento | `NORTE` no Dormitório, `IR VOAR`, `VOAR`, `NORTE` no Corredor sem cartão | "Nao ha saida", "Direcao invalida", "Comando desconhecido", "[BLOQUEADO] ... CARTAO" |
+| 3 | Itens | Pegar 5 itens e tentar o 6º; `PEGAR CARTAO` duas vezes; `PEGAR TERMINAL` | "Inventario cheio (5/5)", "Voce ja carrega", "Nao da para carregar"; `DESCARTAR` abre espaço |
+| 4 | Enigmas | Painel com `1 2 3 4` e depois `3-4-1-2`; sonar `ECO`; núcleo `ECO-7` | Erro tira 15 de vida; acerto liga a energia e abre as passagens |
+| 5 | Recursão | `BUSCAR DOCA` no começo, `BUSCAR ARQUIVO`, `BUSCAR XYZ`, `BUSCAR DOCA` depois do núcleo | sem caminho / `LESTE -> LESTE` / sala desconhecida / `SUL` |
+| 6 | Ponteiros | Programa de teste separado, com 33 verificações em `aplicarDano`, `restaurarVida`, `coletarItem`, `resolverEnigma` e `buscarCaminho`, com `NULL` e com dados reais | 33 certas, 0 falhas |
+| 7 | Memória | Contador de `malloc`/`realloc`/`free` e uma falha de alocação forçada no `realloc` | Nenhum bloco sobrando no fim; com a falha, o jogo avisa e segue |
+| 8 | Save/Load | Salvar, fechar, abrir de novo e carregar. Também tentei carregar arquivo ausente, vazio, com lixo, vida 500, local 42, item 99, item repetido, `QTD_ITENS` errada, sem `FIM`, trava 9 e estado incoerente | Tudo volta igual (vida 85, local, 4 itens, enigmas, travas, diário). Cada arquivo ruim mostra o motivo e a partida atual não muda |
+| 9 | Fim | 7 respostas erradas no painel; partida completa até a cápsula | Derrota com vida 0 e nenhum comando depois; vitória e programa encerrado |
 
-Teste automático da partida completa (Git Bash), da pasta `SINAL_ZERO`:
+## 14. Roteiro da apresentação (5 a 8 minutos)
 
-```bash
-printf '1\nAna\n2\n1\n5\n1\n6\n1\n5\n2\n2\n1\n5\n2\n2\n1\n6\n2\n5\n1\n5\n4\n6\n2\n4\neco\n5\n1\n6\n1\n5\n5\n' | ./sinal_zero.exe
-```
-
----
-
-## 7. Roteiro curto para apresentar ao professor (~5 min)
-
-1. **Abrir** o projeto com `abrir_projeto.bat`, mostrar a árvore de pastas e os 3 CSV.
-2. **Compilar** no terminal do VS Code com `-Wall -Wextra` (sem avisos).
-3. **Jogar** o início: nome, terminal do dormitório (mostra `[NOME]` substituído via `strstr`), coletar o cartão.
-4. No corredor, **tentar entrar no laboratório** → bloqueado; mostrar no código `podeAcessar()` e a matriz `conexoes`.
-5. Usar o cartão, pegar o fusível, restaurar a energia → mostrar `usarItem()` alterando o jogador por ponteiro.
-6. **Salvar** [8], abrir `saves/progresso.txt` no editor; fechar o jogo e **carregar** [2].
-7. Sonar: usar o módulo, errar e acertar o **enigma**.
-8. [7] → [2] `sinal` → explicar `buscarRegistroRecursivo()` (paradas e chamada recursiva).
-9. Liberar a câmara e **vencer**. Mostrar `saves/diario_eventos.txt`.
-10. Mostrar `carregarItens()` (`malloc`/`realloc`) e `liberarJogo()` (`free`) fechando a explicação de memória.
+1. **(30 s)** Abrir `abrir_projeto.bat` e mostrar as pastas `src/`, `include/` e `saves/`.
+2. **(1 min)** Em `estruturas.h`, mostrar `Jogador`, `Ambiente` (`saidas[4]` e `saidasBloqueadas[4]`) e `Diario`.
+3. **(30 s)** Compilar no terminal do VS Code com `-Wall -Wextra -pedantic` e mostrar que não sai nenhum aviso.
+4. **(1 min)** Jogar um pouco: digitar o nome, `EXAMINAR TERMINAL` (a mensagem vem com o seu nome), `PEGAR CARTAO`, `LESTE`, `NORTE`. A porta trancada mostra o motivo.
+5. **(1 min)** `BUSCAR DOCA` não acha caminho. Abrir `buscarCaminho` em `jogo.c` e mostrar o caso-base, a chamada recursiva, o `visitados[]` e a linha do backtracking.
+6. **(1 min)** `USAR CARTAO`, `NORTE`, `MAPA`. Mostrar `aplicarDano(Jogador *)` e explicar `&`, `*`, `->` e `NULL`.
+7. **(1 min)** No painel, errar uma vez (perde 15 de vida) e depois acertar `3 4 1 2`.
+8. **(1 min)** `SALVAR`, abrir `saves/partida.txt` no editor, `SAIR`, rodar de novo, `CARREGAR` e `STATUS`. Mostrar as validações em `carregarPartida`.
+9. **(30 s)** Mostrar `adicionarAoDiario` (`malloc` e `realloc` com ponteiro temporário) e `liberarJogo` (`free`).
+10. **(30 s, se der tempo)** Mostrar o final. Para não perder tempo, vale levar um save feito perto da Doca e só rodar `INTERAGIR CAPSULA`.
