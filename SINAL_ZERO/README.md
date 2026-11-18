@@ -121,6 +121,43 @@ OBJETIVO: Levar o modulo de memoria ate a Central de Sonar e usa-lo no console.
 
 O objetivo é calculado pelo progresso e diz o próximo passo sem entregar a resposta dos enigmas. Quando um comando faz a história andar, aparece `>> NOVO OBJETIVO: ...`. O comando `RESUMO` mostra esse bloco a qualquer momento, e o prompt sempre lembra a sala atual: `[SALA DE MAQUINAS] O que deseja fazer?`.
 
+### Arte ASCII
+
+Cada uma das 9 salas tem um cenário desenhado em ASCII, guardado no campo `arteASCII[1000]` da struct `Ambiente`. A tela de abertura, a vitória e a derrota também têm desenho próprio. Este é o Dormitório:
+
+```
+  +--------------------------------------------------------+
+  |  .----------.                 \   |   /                |
+  |  | ARMARIO  |      LUZ DE    --  (*)  --               |
+  |  | [=]  [=] |    EMERGENCIA    /   |   \               |
+  |  |    o     |       .--------------------.             |
+  |  |          |       | SE VOCE ESTA LENDO |             |
+  |  '----------'       | ISSO, NAO ATIVE O  |             |
+  |                     | SONAR._            |             |
+  |  .______________.   '--------------------'             |
+  |  |   BELICHE    |        [TERMINAL]          PORTA     |
+  |  |______________|                            |  |      |
+  |  ~~~~~ agua escorrendo por baixo da porta ~~~|__|~~    |
+  +--------------------------------------------------------+
+                                       LESTE: corredor ->
+```
+
+Cada desenho mostra os objetos que dá para examinar naquela sala, e as saídas ficam escritas fora da moldura.
+
+Algumas salas mudam de desenho conforme o progresso. Quem faz a troca é `atualizarArtes()`:
+
+| Sala | Desenhos |
+|---|---|
+| Sala de Máquinas | gerador desligado → ligado (depois do painel) |
+| Central de Sonar | mensagem `HFR` → sonar calibrado, `HFR = ECO` |
+| Câmara de Contenção | escuro total → iluminada pela amostra → núcleo desligado |
+
+No momento em que a mudança acontece, a sala é redesenhada na hora. Ao carregar um save, os desenhos voltam no estado salvo.
+
+Todos os desenhos usam só caracteres ASCII imprimíveis, os códigos 32 a 126: letras, números e símbolos como `| - _ / \ ( ) [ ] . ~ * o`. Não usei os caracteres de moldura do CP437, os de linha dupla, porque eles não fazem parte do ASCII e aparecem quebrados em terminais UTF-8, que é o padrão do VS Code. Conferi isso com um programa que percorre cada desenho e com a saída de uma partida completa: nenhum caractere ficou fora dessa faixa.
+
+Os desenhos ficam no topo de `src/jogo.c`, em constantes `static const char ARTE_...[]`. Dentro das strings, `\\` vira uma barra invertida na tela e `\"` vira aspas.
+
 Tanto faz maiúscula ou minúscula, e espaço sobrando é ignorado. Dá para escrever só parte do nome: `PEGAR CHAVE` acha a chave inglesa isolada.
 Artigos e preposições no começo do nome também são ignorados, então `usar o cartao magnetico`, `pegar a chave` e `interagir com o painel` funcionam. Só as palavras do começo saem: `BUSCAR DOCA DE ESCAPE` continua igual.
 
@@ -201,6 +238,7 @@ Os `.h` têm só declarações. Toda a implementação fica em `jogo.c`.
 | `executarComando(Jogo*, const Comando*)` | Chama a função certa para cada verbo e avisa quando o objetivo muda |
 | `moverJogador(Jogador*, Ambiente[], int, int)` | Confere direção, saída, destino, trava e bloqueio, e só então move |
 | `mostrarTela` / `mostrarAmbiente` | Cabeçalho curto (energia, comunicação, local, vida), arte, descrição, saídas, objetos e resumo |
+| `atualizarArtes(Jogo*)` | Troca o desenho da Sala de Máquinas, do Sonar e da Contenção conforme o progresso |
 | `limparTela()` | Limpa o console com `system("cls")` no Windows ou `system("clear")` nos outros sistemas (escolhido com `#ifdef _WIN32`) |
 | `objetivoAtual(const Jogo*)` | Devolve o texto do próximo passo, de acordo com o que já foi feito |
 | `mostrarResumo(const Jogo*)` | Onde o personagem está, o que leva, o que já fez, pistas no diário e objetivo |
@@ -437,6 +475,7 @@ No diário, porque a quantidade de pistas cresce durante a partida. Detalhes na 
 | 10 | Comandos em português natural | `usar o cartao magnetico`, `interagir com o terminal`, `pegar a chave`, `ir para o norte`, `ir o`, `4 1 3 2` no prompt | Os quatro primeiros funcionam; `ir o` ainda vai para oeste; o número no prompt explica que é preciso usar `INTERAGIR` antes |
 | 11 | Tela e resumo | Andar entre salas, `OLHAR`, `EXAMINAR MANUAL`, `PEGAR CARTAO`, `RESUMO`, `CARREGAR` | Tela limpa ao trocar de sala, no `OLHAR` e no `CARREGAR`; o texto do manual continua na tela; aparece `>> NOVO OBJETIVO`; o resumo lista local, itens, o que foi feito e o objetivo |
 | 12 | Sinônimos | `encerra o jogo`, `pega o cartao`, `olha o terminal`, `vai pro leste`, `usa o cartao`, `ler o diario`, `mochila`, `onde`, `voar` | Todos executam o comando certo; `encerra o jogo` pergunta se quer salvar e sai; `voar` mostra os comandos principais |
+| 13 | Arte ASCII | Programa que percorre a arte das 9 salas; partida completa; save com o gerador ligado carregado em outro processo | 9 desenhos de 10 a 14 linhas, todos abaixo de 1000 bytes; nenhum caractere fora dos códigos 32 a 126; gerador, sonar e câmara mudam de desenho na hora certa; depois de carregar, o gerador aparece ligado |
 
 ## 14. Roteiro da apresentação (5 a 8 minutos)
 
