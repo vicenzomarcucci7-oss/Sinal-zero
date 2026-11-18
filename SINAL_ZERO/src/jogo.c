@@ -119,6 +119,190 @@ static const char *SIGLAS[QTD_AMBIENTES] = {
     "DORM", "CORR", "LABO", "ARQV", "MAQS", "SONR", "MANT", "CONT", "DOCA"
 };
 
+/* ---------------------------------------------------------------------
+ * ARTES ASCII
+ * Todos os desenhos usam só caracteres ASCII imprimíveis (códigos 32 a
+ * 126): letras, números e símbolos como | - _ / \ ( ) [ ] . ~ * o.
+ * Não uso caracteres de moldura (como os do CP437), porque eles não são
+ * ASCII e aparecem quebrados em terminais UTF-8.
+ * Cada desenho cabe em 999 bytes, o tamanho de Ambiente.arteASCII.
+ * Nas strings, \ vira uma barra invertida e \" vira aspas na tela.
+ * --------------------------------------------------------------------- */
+
+static const char ARTE_DORMITORIO[] =
+    "  +--------------------------------------------------------+\n"
+    "  |  .----------.                 \\   |   /                |\n"
+    "  |  | ARMARIO  |      LUZ DE    --  (*)  --               |\n"
+    "  |  | [=]  [=] |    EMERGENCIA    /   |   \\               |\n"
+    "  |  |    o     |       .--------------------.             |\n"
+    "  |  |          |       | SE VOCE ESTA LENDO |             |\n"
+    "  |  '----------'       | ISSO, NAO ATIVE O  |             |\n"
+    "  |                     | SONAR._            |             |\n"
+    "  |  .______________.   '--------------------'             |\n"
+    "  |  |   BELICHE    |        [TERMINAL]          PORTA     |\n"
+    "  |  |______________|                            |  |      |\n"
+    "  |  ~~~~~ agua escorrendo por baixo da porta ~~~|__|~~    |\n"
+    "  +--------------------------------------------------------+\n"
+    "                                       LESTE: corredor ->\n"
+;
+
+static const char ARTE_CORREDOR[] =
+    "                 NORTE: laboratorio\n"
+    "  +--------------------------------------------------------+\n"
+    "  |    ___[ LEITOR ]___                    ____________    |\n"
+    "  |   |  _    ___    _ |                  |  ARQUIVO   |   |\n"
+    "  |   | (o)  |   |  (o)|  ==============  |  TECNICO   |   |\n"
+    "  |___|______|___|_____|__________________|____________|___|\n"
+    "  |   .    .   marcas de maos na parede    .    .    .     |\n"
+    "  |      >>        >>        >>        >>        >>        |\n"
+    "  |~~~~~~~~~~~~~~~~ agua nos tornozelos ~~~~~~~~~~~~~~~~~~~|\n"
+    "  |  [ PLACA ]  N: lab  L: arquivo  S: maquinas  O: dorm   |\n"
+    "  +--------------------------------------------------------+\n"
+    "  <- OESTE: dormitorio     SUL: maquinas     LESTE: arquivo ->\n"
+;
+
+static const char ARTE_LABORATORIO[] =
+    "  +--------------------------------------------------------+\n"
+    "  |   .-----------.     _   _   _          .----------.    |\n"
+    "  |   |  ~  *  ~  |    | | | | | |         |  DIARIO  |    |\n"
+    "  |   | *  ~ *  ~ |    |_| |_| |_|         |  Dra.    |    |\n"
+    "  |   |  ~ *  ~  *|     frascos            |  Varga   |    |\n"
+    "  |   |___TANQUE__|     quebrados          '----------'    |\n"
+    "  |        / rachado                 ____________________  |\n"
+    "  |   .~~~~~~~~.          GAVETA    |      BANCADA       | |\n"
+    "  |   ( luz azul )        [ B ]     |____________________| |\n"
+    "  |                                   ||              ||   |\n"
+    "  +--------------------------------------------------------+\n"
+    "  SUL: corredor                        LESTE: sonar ->\n"
+;
+
+static const char ARTE_ARQUIVO[] =
+    "  +--------------------------------------------------------+\n"
+    "  |  .------..------..------..------..------..------.      |\n"
+    "  |  |[####]||[####]||[####]||[####]||[####]||[####]|      |\n"
+    "  |  |[####]||[####]||      ||[####]||[####]||[####]|      |\n"
+    "  |  |[####]||[####]||[####]||[####]||      ||[####]|      |\n"
+    "  |  '------''------''------''------''------''------'      |\n"
+    "  |         pastas encharcadas, papel se desfazendo        |\n"
+    "  |     .-----------------.        .-----------------.     |\n"
+    "  |     |  MANUAL DO      |        |  RELATORIO 7-B  |     |\n"
+    "  |     |  GERADOR        |        |  (amostras)     |     |\n"
+    "  |     '-----------------'        '-----------------'     |\n"
+    "  +--------------------------------------------------------+\n"
+    "  <- OESTE: corredor\n"
+;
+
+static const char ARTE_MAQUINAS[] =
+    "                 NORTE: corredor\n"
+    "  +--------------------------------------------------------+\n"
+    "  |      .------------------.         PAINEL DO GERADOR    |\n"
+    "  |     /      GERADOR       \\       .-----------------.   |\n"
+    "  |    |    .-----------.     |      |  1   2   3   4  |   |\n"
+    "  |    |    |  ( 0 0 )  |     |      |  |   |   |   |  |   |\n"
+    "  |    |    '-----------'     |      |  o   o   o   o  |   |\n"
+    "  |     \\____________________/       | [ FUSIVEL: --- ]|   |\n"
+    "  |         ||          ||           '-----------------'   |\n"
+    "  |    fumaca  ~ ~  cheiro de fio queimado  ~ ~            |\n"
+    "  |                                  [   DESLIGADO   ]     |\n"
+    "  +--------------------------------------------------------+\n"
+    "                                     LESTE: manutencao ->\n"
+;
+
+static const char ARTE_SONAR[] =
+    "        .     (    (    (   ( O )   )    )    )     .\n"
+    "  +--------------------------------------------------------+\n"
+    "  |   .------------------.          .------------------.   |\n"
+    "  |   |  .  *       .    |          |   ~^~^~^~^~^~    |   |\n"
+    "  |   |    (  ( o )  )   |          |  ~^~^~   ~^~^~   |   |\n"
+    "  |   |  .       *     . |          |   frequencia     |   |\n"
+    "  |   '------------------'          '------------------'   |\n"
+    "  |                 .------------------------.             |\n"
+    "  |                 |  CONSOLE DE CALIBRACAO |             |\n"
+    "  |                 |  > HFR_                |             |\n"
+    "  |                 '------------------------'             |\n"
+    "  |          alto-falantes:  ))) chiado (((                |\n"
+    "  +--------------------------------------------------------+\n"
+    "  <- OESTE: laboratorio                  SUL: manutencao\n"
+;
+
+static const char ARTE_MANUTENCAO[] =
+    "                 NORTE: sonar\n"
+    "  +--------------------------------------------------------+\n"
+    "  |=====##========##========##========##========##=====    |\n"
+    "  |   ~ vapor ~         ~ vapor ~          ~ vapor ~       |\n"
+    "  |   ____||____     ____||____     ____||____             |\n"
+    "  |  |__  ||  __|   |__  ||  __|   |__  ||  __|            |\n"
+    "  |     \\_||_/   canos  \\_||_/ estourados \\_||_/           |\n"
+    "  |      \"EU JA PASSEI POR AQUI\"  (riscado na parede)      |\n"
+    "  |  >>>  tunel estreito  >>>  calor  >>>  CUIDADO  >>>    |\n"
+    "  |=====##========##========##========##========##=====    |\n"
+    "  +--------------------------------------------------------+\n"
+    "  <- OESTE: maquinas                LESTE: contencao ->\n"
+;
+
+static const char ARTE_CONTENCAO_ESCURA[] =
+    "  +--------------------------------------------------------+\n"
+    "  |                                                        |\n"
+    "  |      .   .   .   .   .   .   .   .   .   .   .         |\n"
+    "  |                                                        |\n"
+    "  |                   zzzzzzzzzz    (zumbido)              |\n"
+    "  |                                                        |\n"
+    "  |      .   .   .   .   .   .   .   .   .   .   .         |\n"
+    "  |                                                        |\n"
+    "  |                 voce nao enxerga nada                  |\n"
+    "  |                                                        |\n"
+    "  +--------------------------------------------------------+\n"
+    "  <- OESTE: manutencao                     SUL: (escuro)\n"
+;
+
+static const char ARTE_DOCA[] =
+    "                 NORTE: contencao\n"
+    "  +--------------------------------------------------------+\n"
+    "  |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  |\n"
+    "  |         ________________________                       |\n"
+    "  |        /  CAPSULA DE FUGA  [o]  \\                      |\n"
+    "  |  =====|    .---.    .---.        |>===== TRILHO =====  |\n"
+    "  |        \\___'---'____'---'_______/                      |\n"
+    "  |  ~~~~~~~~~~~~~~~ agua ate a metade ~~~~~~~~~~~~~~~~~   |\n"
+    "  |       NIVEL 3 - DOCA DE ESCAPE        ^ superficie     |\n"
+    "  +--------------------------------------------------------+\n"
+;
+
+static const char ARTE_TITULO[] =
+    "   ____ ___ _   _    _    _       _____ _____ ____   ___\n"
+    "  / ___|_ _| \\ | |  / \\  | |     |__  /| ____|  _ \\ / _ \\\n"
+    "  \\___ \\| ||  \\| | / _ \\ | |       / / |  _| | |_) | | | |\n"
+    "   ___) | || |\\  |/ ___ \\| |___   / /_ | |___|  _ <| |_| |\n"
+    "  |____/___|_| \\_/_/   \\_\\_____| /____||_____|_| \\_\\\\___/\n"
+    "\n"
+    "  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+    "      ESTACAO NEREIDA-7  |  2140 m  |  CONTATO: PERDIDO\n"
+    "  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+    "              .   o    ((( ( ) )))    o   .\n"
+;
+
+static const char ARTE_VITORIA[] =
+    "                  \\    |    /\n"
+    "               --    ( O )    --          SUPERFICIE\n"
+    "                  /    |    \\\n"
+    "  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+    "                       /\\\n"
+    "                      /  \\\n"
+    "                     | () |\n"
+    "                     |    |     ^ subindo\n"
+    "                    /|____|\\\n"
+    "                      ''''\n"
+    "  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .\n"
+    "                NEREIDA-7 (la embaixo)\n"
+;
+
+static const char ARTE_DERROTA[] =
+    "   SINAL VITAL\n"
+    "   ____/\\____/\\____/\\_____________________________________\n"
+    "                                            (sem sinal)\n"
+;
+
+
 /* =====================================================================
  * 2. UTILITÁRIOS DE ENTRADA E TEXTO
  * ===================================================================== */
@@ -373,97 +557,59 @@ void inicializarMundo(Jogo *jogo)
         "Voce desperta apos um ruido ensurdecedor.\n"
         "As luzes de emergencia piscam e ha agua escorrendo por baixo da porta.\n"
         "Um terminal permanece ligado no canto da sala, perto do armario.",
-        "       __________________________\n"
-        "      |                          |\n"
-        "      |        DORMITORIO        |\n"
-        "      |  [ CAMA ]     [ARMARIO]  |\n"
-        "      |  ~~~~~~~~     [TERMINAL] |\n"
-        "      |__________[PORTA]_________|\n",
+        ARTE_DORMITORIO,
         SEM_SAIDA, SEM_SAIDA, AMB_CORREDOR, SEM_SAIDA);
 
     definirAmbiente(a + AMB_CORREDOR, AMB_CORREDOR, "CORREDOR CENTRAL",
         "O corredor central liga os setores da NEREIDA-7.\n"
         "O casco range com a pressao do oceano e a agua bate nos tornozelos.\n"
         "Uma placa indica as direcoes. A porta norte tem um leitor de cartao.",
-        "   ==========================================\n"
-        "    ||   N: LAB   |  L: ARQ   |  S: MAQ   ||\n"
-        "   ------------------------------------------\n"
-        "    >>   o    o    o  [LEITOR]  o    o   >>\n"
-        "   ==========================================\n",
+        ARTE_CORREDOR,
         AMB_LABORATORIO, AMB_MAQUINAS, AMB_ARQUIVO, AMB_DORMITORIO);
 
     definirAmbiente(a + AMB_LABORATORIO, AMB_LABORATORIO, "LABORATORIO ABISSAL",
         "Bancadas viradas, frascos quebrados e um tanque de cultivo rachado.\n"
         "Organismos minusculos brilham em azul dentro do tanque.\n"
         "Um diario de pesquisa continua preso a uma bancada.",
-        "      ________________________________\n"
-        "     |  [TANQUE]   o  .  o            |\n"
-        "     |  ( ~*~*~ )     o    [BANCADA]  |\n"
-        "     |  (_______)          [DIARIO ]  |\n"
-        "     |________________________________|\n",
+        ARTE_LABORATORIO,
         SEM_SAIDA, AMB_CORREDOR, AMB_SONAR, SEM_SAIDA);
 
     definirAmbiente(a + AMB_ARQUIVO, AMB_ARQUIVO, "ARQUIVO TECNICO",
         "Estantes de metal cheias de pastas encharcadas.\n"
         "Quase tudo esta ilegivel, mas um manual e um relatorio\n"
         "foram guardados em sacos plasticos.",
-        "      _______________________________\n"
-        "     | [===] [===] [===] [===] [===] |\n"
-        "     | [===] [===] [===] [===] [===] |\n"
-        "     |  [MANUAL]         [RELATORIO] |\n"
-        "     |_______________________________|\n",
+        ARTE_ARQUIVO,
         SEM_SAIDA, SEM_SAIDA, SEM_SAIDA, AMB_CORREDOR);
 
     definirAmbiente(a + AMB_MAQUINAS, AMB_MAQUINAS, "SALA DE MAQUINAS",
         "O gerador principal esta silencioso. Cheiro forte de fio queimado.\n"
         "Ao lado dele, um painel com quatro alavancas numeradas.",
-        "       _______________________________\n"
-        "      |   ( GERADOR )     [ PAINEL ]  |\n"
-        "      |   (  o   o  )      | | | |    |\n"
-        "      |   (_________)      1 2 3 4    |\n"
-        "      |_______________________________|\n",
+        ARTE_MAQUINAS,
         AMB_CORREDOR, SEM_SAIDA, AMB_MANUTENCAO, SEM_SAIDA);
 
     definirAmbiente(a + AMB_SONAR, AMB_SONAR, "CENTRAL DE SONAR",
         "Telas enormes mostram o fundo do oceano em tons de verde.\n"
         "Os alto-falantes repetem um chiado que lembra uma voz humana.\n"
         "No centro, o console de calibracao pisca.",
-        "          .   (   (   ( O )   )   )   .\n"
-        "       _________________________________\n"
-        "      |  [ TELA ]  [ TELA ]  [CONSOLE]  |\n"
-        "      |   ~^~^~     ~^~^~     [=====]   |\n"
-        "      |_________________________________|\n",
+        ARTE_SONAR,
         SEM_SAIDA, AMB_MANUTENCAO, SEM_SAIDA, AMB_LABORATORIO);
 
     definirAmbiente(a + AMB_MANUTENCAO, AMB_MANUTENCAO, "PASSAGEM DE MANUTENCAO",
         "Um tunel estreito de manutencao. Canos estourados soltam vapor quente.\n"
         "Cada passo aqui dentro queima a pele.",
-        "     ====================================\n"
-        "      ||  ~ vapor ~    ||    ~ vapor ~ ||\n"
-        "     =##====##====##====##====##====##==\n"
-        "        (canos estourados) [TUBULACAO]\n"
-        "     ====================================\n",
+        ARTE_MANUTENCAO,
         AMB_SONAR, SEM_SAIDA, AMB_CONTENCAO, AMB_MAQUINAS);
 
     definirAmbiente(a + AMB_CONTENCAO, AMB_CONTENCAO, "CAMARA DE CONTENCAO",
         "Escuridao total: a luz eletrica nunca chegou a esta camara.\n"
         "Um zumbido grave vem do centro da sala e vibra no seu peito.",
-        "            _________________\n"
-        "           |    .-------.    |\n"
-        "           |    | NUCLEO|    |\n"
-        "           |    '-------'    |\n"
-        "           |_________________|\n"
-        "              (( ))   (( ))\n",
+        ARTE_CONTENCAO_ESCURA,
         SEM_SAIDA, AMB_DOCA, SEM_SAIDA, AMB_MANUTENCAO);
 
     definirAmbiente(a + AMB_DOCA, AMB_DOCA, "DOCA DE ESCAPE",
         "A doca de escape esta inundada ate a metade.\n"
         "Uma capsula de fuga flutua presa ao trilho de lancamento.",
-        "        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
-        "              ____________\n"
-        "             |  CAPSULA   |>\n"
-        "             |____________|\n"
-        "        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+        ARTE_DOCA,
         AMB_CONTENCAO, SEM_SAIDA, SEM_SAIDA, SEM_SAIDA);
 
     a[AMB_DORMITORIO].visitado = 1;
@@ -595,13 +741,7 @@ void liberarJogo(Jogo *jogo)
 
 void mostrarTitulo(void)
 {
-    printf("\n==================================================\n");
-    printf("                    SINAL ZERO\n");
-    printf("               ESTACAO NEREIDA-7\n");
-    printf("==================================================\n");
-    printf("          .   o    ((( ( ) )))    o   .\n");
-    printf("     profundidade: 2140 m | contato: PERDIDO\n");
-    printf("==================================================\n\n");
+    printf("\n%s\n", ARTE_TITULO);
 }
 
 /* Mostra arte e descrição de um ambiente (recebido por ponteiro const). */
@@ -2234,11 +2374,7 @@ static void mostrarVitoria(const Jogo *jogo)
 {
     printf("\nVoce entra na capsula e puxa a alavanca de lancamento.\n");
     printf("A NEREIDA-7 fica para tras, escura e silenciosa.\n\n");
-    printf("              |\n");
-    printf("             /^\\\n");
-    printf("            | C |   ~ subindo ~\n");
-    printf("            |___|\n");
-    printf("        ~~~~~~~~~~~~~~~~~~~~~~~~\n\n");
+    printf("%s\n", ARTE_VITORIA);
     printf("Horas depois, a luz do sol atravessa a escotilha.\n");
     printf("No painel da capsula, um aviso pisca: 1 MENSAGEM RECEBIDA. Remetente: %s.\n", jogo->jogador.nome);
     printf("\n==================================================\n");
@@ -2252,7 +2388,8 @@ static void mostrarDerrota(const Jogo *jogo)
 {
     printf("\nSua visao escurece. O chiado dos alto-falantes forma uma unica palavra.\n");
     printf("Em algum lugar da estacao, um terminal acende:\n");
-    printf("\"SE VOCE ESTA LENDO ISSO, NAO ATIVE O SONAR.\" -- %s\n", jogo->jogador.nome);
+    printf("\"SE VOCE ESTA LENDO ISSO, NAO ATIVE O SONAR.\" -- %s\n\n", jogo->jogador.nome);
+    printf("%s", ARTE_DERROTA);
     printf("\n==================================================\n");
     printf("          DERROTA - SINAL PERDIDO\n");
     printf("==================================================\n");
