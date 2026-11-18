@@ -26,6 +26,7 @@ int  textoCorresponde(const char *nome, const char *busca);
 /* ---------- Inicialização e memória ---------- */
 void iniciarJogo(Jogador *jogador);
 void inicializarMundo(Jogo *jogo);
+void atualizarArtes(Jogo *jogo);
 int  menuInicial(Jogo *jogo);
 void liberarJogo(Jogo *jogo);
 int  adicionarAoDiario(Diario *diario, int idRegistro);

@@ -268,6 +268,67 @@ static const char ARTE_DOCA[] =
     "  +--------------------------------------------------------+\n"
 ;
 
+/* Variações: salas cujo desenho muda conforme o progresso
+ * (ver atualizarArtes). */
+static const char ARTE_CONTENCAO_ILUMINADA[] =
+    "  +--------------------------------------------------------+\n"
+    "  |     *    .          .-------------.         .    *     |\n"
+    "  |  .           *     /    NUCLEO     \\     *             |\n"
+    "  |                   |   ((( O )))     |          .       |\n"
+    "  |   GRAVADOR =======|  TRANSMISSOR    |                  |\n"
+    "  |   [ REC * ]        \\_______________/     .             |\n"
+    "  |   VOZ: VOCE            ||       ||                     |\n"
+    "  |     ~ luz azul da amostra ~     ~ luz azul ~           |\n"
+    "  +--------------------------------------------------------+\n"
+    "  <- OESTE: manutencao                  SUL: doca (travada)\n"
+;
+
+static const char ARTE_CONTENCAO_DESLIGADA[] =
+    "  +--------------------------------------------------------+\n"
+    "  |                     .-------------.                    |\n"
+    "  |                    /    NUCLEO     \\                   |\n"
+    "  |                   |    (  x  )      |                  |\n"
+    "  |   GRAVADOR - - - -|   DESLIGADO     |                  |\n"
+    "  |   [  ---  ]        \\_______________/                   |\n"
+    "  |                        ||       ||                     |\n"
+    "  |               silencio total. finalmente.              |\n"
+    "  +--------------------------------------------------------+\n"
+    "  <- OESTE: manutencao                  SUL: doca (livre)\n"
+;
+
+static const char ARTE_MAQUINAS_LIGADA[] =
+    "                 NORTE: corredor\n"
+    "  +--------------------------------------------------------+\n"
+    "  |      .------------------.   )))   PAINEL DO GERADOR    |\n"
+    "  |     /      GERADOR       \\  )))  .-----------------.   |\n"
+    "  |    |    .-----------.     |      |  ^   ^   ^   ^  |   |\n"
+    "  |    |    |  ( @ @ )  |     |      |  |   |   |   |  |   |\n"
+    "  |    |    '-----------'     |      |  1   2   3   4  |   |\n"
+    "  |     \\____________________/       | [ FUSIVEL:  OK ]|   |\n"
+    "  |         ||  ~vrrrrm~  ||         '-----------------'   |\n"
+    "  |    luzes acesas  *  ventilacao ligada  *  ar frio      |\n"
+    "  |                                  [    LIGADO     ]     |\n"
+    "  +--------------------------------------------------------+\n"
+    "                                     LESTE: manutencao ->\n"
+;
+
+static const char ARTE_SONAR_CALIBRADO[] =
+    "        .     (    (    (   ( O )   )    )    )     .\n"
+    "  +--------------------------------------------------------+\n"
+    "  |   .------------------.          .------------------.   |\n"
+    "  |   |  .  *       .    |          |  ______________  |   |\n"
+    "  |   |    (  ( o )  )   |          |  sinal estavel   |   |\n"
+    "  |   |  .       *     . |          |  ______________  |   |\n"
+    "  |   '------------------'          '------------------'   |\n"
+    "  |                 .------------------------.             |\n"
+    "  |                 |  CONSOLE DE CALIBRACAO |             |\n"
+    "  |                 |  > HFR = ECO           |             |\n"
+    "  |                 '------------------------'             |\n"
+    "  |        SONAR CALIBRADO  -  travas da manutencao: OFF   |\n"
+    "  +--------------------------------------------------------+\n"
+    "  <- OESTE: laboratorio                  SUL: manutencao\n"
+;
+
 static const char ARTE_TITULO[] =
     "   ____ ___ _   _    _    _       _____ _____ ____   ___\n"
     "  / ___|_ _| \\ | |  / \\  | |     |__  /| ____|  _ \\ / _ \\\n"
@@ -670,6 +731,45 @@ void inicializarMundo(Jogo *jogo)
     jogo->diario.ids = NULL;
     jogo->diario.quantidade = 0;
     jogo->diario.capacidade = 0;
+}
+
+/* Troca o desenho das salas que mudam com o progresso:
+ *   Sala de Máquinas: gerador desligado -> ligado
+ *   Central de Sonar: mensagem HFR -> sonar calibrado (ECO)
+ *   Câmara de Contenção: escura -> iluminada pela amostra -> núcleo desligado
+ * É chamada depois de cada comando e depois de carregar um save, já que
+ * o carregamento recria o mundo com os desenhos iniciais. */
+void atualizarArtes(Jogo *jogo)
+{
+    Ambiente *a;
+    const char *contencao;
+
+    if (jogo == NULL)
+        return;
+    a = jogo->ambientes;
+
+    copiarTexto(a[AMB_MAQUINAS].arteASCII,
+                jogo->estado.energiaRestaurada ? ARTE_MAQUINAS_LIGADA : ARTE_MAQUINAS,
+                sizeof(a[AMB_MAQUINAS].arteASCII));
+    copiarTexto(a[AMB_SONAR].arteASCII,
+                jogo->enigmas[ENIGMA_SONAR].resolvido ? ARTE_SONAR_CALIBRADO : ARTE_SONAR,
+                sizeof(a[AMB_SONAR].arteASCII));
+
+    if (jogo->estado.sinalDesativado)
+        contencao = ARTE_CONTENCAO_DESLIGADA;
+    else if (jogo->estado.origemDescoberta)
+        contencao = ARTE_CONTENCAO_ILUMINADA;
+    else
+        contencao = ARTE_CONTENCAO_ESCURA;
+    copiarTexto(a[AMB_CONTENCAO].arteASCII, contencao, sizeof(a[AMB_CONTENCAO].arteASCII));
+}
+
+/* Depois de um acontecimento importante, redesenha a sala atual na hora,
+ * para o jogador ver a mudança (o gerador ligando, a câmara acendendo...). */
+static void mostrarMudancaDeCena(Jogo *jogo)
+{
+    atualizarArtes(jogo);
+    printf("\n%s", jogo->ambientes[jogo->jogador.localAtual].arteASCII);
 }
 
 int diarioContem(const Diario *diario, int idRegistro)
@@ -1455,6 +1555,7 @@ int usarItem(Jogo *jogo, Item *item)
         case ITEM_AMOSTRA:
             estado->origemDescoberta = 1;
             consumirItem(jogo, item);
+            mostrarMudancaDeCena(jogo);
             printf("\nVoce abre o frasco. A amostra se acende em um azul intenso.\n");
             printf("A luz revela o NUCLEO: um transmissor ligado a um gravador de bordo.\n");
             printf("Na tela do gravador: ULTIMA GRAVACAO - VOZ: %s.\n", jogador->nome);
@@ -1646,6 +1747,7 @@ void interagirObjeto(Jogo *jogo, const char *nome)
                    "  separados por espaco. (DIARIO mostra o manual, se voce ja leu.)")) {
             estado->energiaRestaurada = 1;
             desbloquearPassagem(jogo->ambientes, AMB_LABORATORIO, LESTE);
+            mostrarMudancaDeCena(jogo);
             printf("O gerador tosse, engasga... e ruge. As luzes da estacao acendem!\n");
             printf("[ SISTEMA DE ENERGIA: ONLINE ] A porta motorizada para o sonar foi liberada.\n");
         }
@@ -1660,6 +1762,7 @@ void interagirObjeto(Jogo *jogo, const char *nome)
                    "Mensagem codificada: HFR\n"
                    "  Pista: a regra da cifra veio no MODULO DE MEMORIA (DIARIO mostra de novo).")) {
             jogo->ambientes[AMB_MANUTENCAO].bloqueado = 0;
+            mostrarMudancaDeCena(jogo);
             printf("O sonar emite um pulso grave e se estabiliza. Na tela: ECO.\n");
             printf("Ao longe, as travas da PASSAGEM DE MANUTENCAO se soltam (SUL).\n");
         }
@@ -1675,6 +1778,7 @@ void interagirObjeto(Jogo *jogo, const char *nome)
             estado->sinalDesativado = 1;
             estado->docaLiberada = 1;
             desbloquearPassagem(jogo->ambientes, AMB_CONTENCAO, SUL);
+            mostrarMudancaDeCena(jogo);
             printf("O zumbido cessa. Os alto-falantes da estacao ficam mudos.\n");
             printf("[ TRANSMISSAO ENCERRADA ] A quarentena foi suspensa: a DOCA DE ESCAPE (SUL) esta livre.\n");
         }
@@ -2050,6 +2154,7 @@ void executarComando(Jogo *jogo, const Comando *comando)
     copiarTexto(objetivoAntes, objetivoAtual(jogo), sizeof(objetivoAntes));
 
     despacharComando(jogo, comando);
+    atualizarArtes(jogo);
 
     if (!jogo->estado.jogoFinalizado && strcmp(comando->verbo, "CARREGAR") != 0 &&
         strcmp(objetivoAntes, objetivoAtual(jogo)) != 0)
@@ -2348,6 +2453,7 @@ int carregarPartida(Jogo *jogo)
     /* Tudo válido: troca a partida atual pela carregada. */
     liberarDiario(&jogo->diario);
     *jogo = temp;                          /* cópia da struct inteira (o diário passa junto) */
+    atualizarArtes(jogo);                  /* desenhos de acordo com o progresso carregado */
     printf("\n[ PARTIDA CARREGADA: %s | vida %d | %s ]\n",
            jogo->jogador.nome, jogo->jogador.vida, jogo->ambientes[jogo->jogador.localAtual].nome);
     return 1;
